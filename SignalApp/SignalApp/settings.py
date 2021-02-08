@@ -11,6 +11,9 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
 from pathlib import Path
+import os, sys
+from config import Config as conf
+CONFIG = conf().config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,14 +26,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = '=%0_xgewm*2z7fyr*^nt$c6j7h%4xt$ibr)bc#dgub20=gxdq3'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+PROD = CONFIG['SITE_ENVIRONMENT']
 
-ALLOWED_HOSTS = []
+if PROD:
+    from .production_settings import *
+
+else:
+    from .dev_settings import *
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -39,7 +47,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'crispy_forms',
-    'channels',
+    'django_celery_results',
+    'django_celery_beat',
+    'rest_framework.authtoken',
+    'report_maker',
 ]
 
 MIDDLEWARE = [
@@ -57,7 +68,7 @@ ROOT_URLCONF = 'SignalApp.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [f"{BASE_DIR}/templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -71,17 +82,12 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'SignalApp.wsgi.application'
+ASGI_APPLICATION = 'SignalApp.wsgi.application'
 
-
-# Database
-# https://docs.djangoproject.com/en/3.1/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
+# CELERY
+ALGORITHM_MAX_CALC_TIME = 10
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_CACHE_BACKEND = 'django-cache'
 
 
 # Password validation
