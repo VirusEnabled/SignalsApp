@@ -83,3 +83,6 @@ websocket-client==0.57.0
 yarl==1.1.0
 zope.interface==5.1.2
 redis
+django-channels
+django_celery_results
+django_celery_beat
