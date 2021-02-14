@@ -1,0 +1,62 @@
+<div class="table-responsive">
+<table class="table table-de table table-striped table-bordered nowrap dataTable no-footer dtr- collapsed">
+<thead>
+<tr>
+ <th>
+     Owner's name
+ </th>
+ <th>
+    Actions
+ </th>
+</tr>
+</thead>
+<tbody>
+    {% for owner in store_owners_pag.data_list %}
+    <tr>
+        <td>
+            {{ owner.owner_name|title}}{% if request.user.is_staff or owner.owner.unique_id == request.user.usertr.unique_id %}
+            |<a href="{% if request.user.is_staff %}{% url 'admin:show_user' owner.owner.unique_id%}
+{% else %}
+{% url 'core:show_profile' %}
+{% endif %}"> <i class="ion-eye"></i> View Owner Profile</a>
+
+{% endif %}
+        </td>
+    <td>
+        <form action="{% url 'admin:remove_owner' store.unique_id owner.id %}" method="post">
+            {% csrf_token %}
+        <button class="delete_owner" type="submit"> <i class="ion-close"></i> Remove Owner</button></form>
+    </td>
+    </tr>
+    {% empty %}
+    <div class="card">
+        <h5>
+            The store doesn't have any owners.
+        </h5>
+    </div>
+    {% endfor %}
+</tbody>
+</table>
+
+     <div class="pagination" style="">
+        <span class="step-links">
+        {% if store_owners_pag.prior_page %}
+        <a class="pag" onclick="get_page('{{store_owners_pag.page_name}}',1,10,detail_id='{{store_owners_pag.detail_id}}')">&laquo; first</a>
+        <a class="pag" onclick="get_page('{{store_owners_pag.page_name}}',{{store_owners_pag.prior_page}},10,detail_id='{{store_owners_pag.detail_id}}')"> < previous</a>
+        {% endif %}
+
+        <span class="current">
+        {{store_owners_pag.total_pages}}
+        </span>
+
+        {% if store_owners_pag.next_page %}
+        <a class="pag" onclick="get_page('{{store_owners_pag.page_name}}',{{store_owners_pag.next_page}},10, detail_id='{{store_owners_pag.detail_id}}')">next > </a>
+        <a class="pag" onclick="get_page('{{store_owners_pag.page_name}}',{{store_owners_pag.last_page}},10,detail_id='{{store_owners_pag.detail_id}}')">last &raquo;</a>
+        {% endif %}
+
+        <span class="current">
+        {{store_owners_pag.per_page}}
+        </span>
+        </span>
+    </div>
+</div>

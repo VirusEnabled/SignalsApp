@@ -1,0 +1,74 @@
+<!-- search bar -->
+
+<div class="form-group search-group">
+  <input type="text" placeholder="Search.." name="search" class="form-control" style="width:35%;" id="search_{{page_name}}">
+  <a type="submit" class="btn btn-warning btn-round search-btn" onclick="pagination_search('{{page_name}}', detail_id='{{detail_id}}')">
+      <i class="fa fa-search" style="color:white;"></i></a>
+</div>
+
+<!-- search bar ends -->
+
+<div class="table-responsive">
+<table class="table table-de table table-striped table-bordered nowrap dataTable no-footer dtr- collapsed">
+<thead>
+<tr>
+    <th> Store </th>
+    <th> Amount </th>
+    <th> Stripe Confirmation ID</th>
+    <th> Actions </th>
+</tr>
+</thead>
+<tbody>
+{% for payment in data_list %}
+<tr>
+    <td>{{payment.store}}</td>
+    <td>{{payment.amount}}</td>
+    <td>{{payment.stripe_confirmation_number}}</td>
+
+    <td>
+        <div class="form-group" align="left" style="margin-right:20px;">
+<div class="dropdown-warning dropdown open">
+<button class="btn btn-warning btn-round dropdown-toggle waves-effect waves-light " type="button" id="dropdown-5" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Actions</button>
+<div class="dropdown-menu" aria-labelledby="dropdown-5" data-dropdown-in="fadeIn" data-dropdown-out="fadeOut" x-placement="bottom-start" style="position: absolute; transform: translate3d(0px, 40px, 0px); top: 0px; left: 0px; will-change: transform;">
+<a class="dropdown-item waves-light waves-effect" href="{% if request.user.is_staff %}
+                                    {% url 'admin:show_payment' payment.unique_id %}
+                                    {% else %}
+                                    {% url 'payments:show_payment' payment.unique_id %}
+                                    {% endif %}
+                                    "> Show Payment Details </a>
+</div>
+</div>
+</div>
+    </td>
+</tr>
+{% empty %}
+<div class="card">
+        <h3 align="center">
+            There's no Payments registered in the app.
+        </h3>
+</div>
+{% endfor %}
+</tbody>
+</table>
+<div class="pagination" style="">
+        <span class="step-links">
+        {% if prior_page %}
+        <a class="pag" onclick="get_page('{{page_name}}',1,10,detail_id='{{detail_id}}')">&laquo; first</a>
+        <a class="pag" onclick="get_page('{{page_name}}',{{prior_page}},10,detail_id='{{detail_id}}')"> < previous</a>
+        {% endif %}
+
+        <span class="current">
+        {{total_pages}}
+        </span>
+
+        {% if next_page %}
+        <a class="pag" onclick="get_page('{{page_name}}',{{next_page}},10, detail_id='{{detail_id}}')">next > </a>
+        <a class="pag" onclick="get_page('{{page_name}}',{{last_page}},10,detail_id='{{detail_id}}')">last &raquo;</a>
+        {% endif %}
+
+        <span class="current">
+        {{per_page}}
+        </span>
+        </span>
+    </div>
+</div>

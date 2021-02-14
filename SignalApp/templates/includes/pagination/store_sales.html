@@ -1,0 +1,72 @@
+<div class="table-responsive">
+<table class="table table-de table table-striped table-bordered nowrap dataTable no-footer dtr- collapsed">
+<thead>
+<tr>
+ <th>
+     Sale ID
+ </th>
+ <th>
+    Amount
+ </th>
+</tr>
+</thead>
+<tbody>
+    {% for sale in store_sales_pag.data_list %}
+    <tr>
+        <td>
+            Sale:
+            {{ sale.id}}|
+                <a href="
+                {% if request.user.is_staff %}
+                {% url 'admin:show_sale' sale.unique_id %}
+                {% else %}
+                {% url 'sales:show_sale' sale.unique_id %}
+                {% endif %}"> <i class="ion-eye"></i> View Sale Details</a>
+        </td>
+    <td>
+        {{sale.amount_sold}}
+    </td>
+    </tr>
+    {% empty %}
+    <div class="card">
+        <h5>
+            The store doesn't have any sales registered.
+        </h5>
+    </div>
+    {% endfor %}
+ <tr>
+        <th>
+            Total Sold
+        </th>
+        <td>
+           <b>
+               {{total_sales}}
+           </b>
+        </td>
+    </tr>
+</tbody>
+</table>
+
+
+    <div class="pagination" style="">
+        <span class="step-links">
+        {% if store_sales_pag.prior_page %}
+        <a class="pag" onclick="get_page('{{store_sales_pag.page_name}}',1,10,detail_id='{{store_sales_pag.detail_id}}')">&laquo; first</a>
+        <a class="pag" onclick="get_page('{{store_sales_pag.page_name}}',{{store_sales_pag.prior_page}},10,detail_id='{{store_sales_pag.detail_id}}')"> < previous</a>
+        {% endif %}
+
+        <span class="current">
+        {{store_sales_pag.total_pages}}
+        </span>
+
+        {% if store_sales_pag.next_page %}
+        <a class="pag" onclick="get_page('{{store_sales_pag.page_name}}',{{store_sales_pag.next_page}},10, detail_id='{{store_sales_pag.detail_id}}')">next > </a>
+        <a class="pag" onclick="get_page('{{store_sales_pag.page_name}}',{{store_sales_pag.last_page}},10,detail_id='{{store_sales_pag.detail_id}}')">last &raquo;</a>
+        {% endif %}
+
+        <span class="current">
+        {{store_sales_pag.per_page}}
+        </span>
+        </span>
+    </div>
+</div>

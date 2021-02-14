@@ -1,0 +1,81 @@
+<div class="table-responsive">
+    <table class="table m-0">
+        <tbody>
+        {% for store in owner_stores_pag.data_list %}
+
+        <tr>
+        <th scope="row">
+        Store
+        </th>
+        <td>
+        {{ store.store.name |title}}  |  <a href="{% if request.user.is_staff %}
+        {% url 'admin:show_store' store.store.unique_id %}
+        {% else %}
+        {% url 'core:show_store' store.store.unique_id %}
+        {% endif %}
+        "> <i class="ion-eye"></i> View Store</a>
+        </td>
+        <th scope="row">
+        Status
+        </th>
+        <td>
+        {% if store.store.status == 'PA' %}
+        <h6>
+        <label class="label bg-warning">PENDING</label>
+        </h6>
+        {% elif store.store.status == 'A' %}
+        <h6>
+        <label class="label bg-success">ACTIVE</label>
+        </h6>
+        {% elif store.store.status == 'ED' %}
+        <h6>
+        <label class="label bg-inverse">TROUBLE</label>
+        </h6>
+        {% elif store.store.status == 'V' %}
+        <h6>
+        <label class="label label-default">VACATION</label>
+        </h6>
+        {% elif store.store.status == 'S' %}
+        <h6>
+        <label class="label bg-danger">SUSPENDED</label>
+        </h6>
+        {% elif store.store.status == 'DA' %}
+        <h6>
+        <label class="label bg-danger">DENIED</label>
+        </h6>
+        {% endif %}
+        </td>
+        </tr>
+        {% empty %}
+        <tr>
+        <td>
+        NO DATA
+        </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <div class="pagination" style="">
+        <span class="step-links">
+        {% if owner_stores_pag.prior_page %}
+        <a class="pag" onclick="get_page('{{owner_stores_pag.page_name}}',1,10,detail_id='{{owner_stores_pag.detail_id}}')">&laquo; first</a>
+        <a class="pag" onclick="get_page('{{owner_stores_pag.page_name}}',{{owner_stores_pag.prior_page}},10,detail_id='{{owner_stores_pag.detail_id}}')"> < previous</a>
+        {% endif %}
+
+        <span class="current">
+        {{owner_stores_pag.total_pages}}
+        </span>
+
+        {% if owner_stores_pag.next_page %}
+        <a class="pag" onclick="get_page('{{owner_stores_pag.page_name}}',{{owner_stores_pag.next_page}},10, detail_id='{{owner_stores_pag.detail_id}}')">next > </a>
+        <a class="pag" onclick="get_page('{{owner_stores_pag.page_name}}',{{owner_stores_pag.last_page}},10,detail_id='{{owner_stores_pag.detail_id}}')">last &raquo;</a>
+        {% endif %}
+
+        <span class="current">
+        {{owner_stores_pag.per_page}}
+        </span>
+        </span>
+    </div>
+
+
+</div>
