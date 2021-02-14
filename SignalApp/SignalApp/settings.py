@@ -13,7 +13,8 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 from pathlib import Path
 import os, sys
 from config import Config as conf
-CONFIG = conf().config
+conf_obj = conf()
+CONFIG = conf_obj.config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,7 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = '=%0_xgewm*2z7fyr*^nt$c6j7h%4xt$ibr)bc#dgub20=gxdq3'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-PROD = CONFIG['SITE_ENVIRONMENT']
+PROD = conf_obj.get_site_env
 
 if PROD:
     from .production_settings import *
@@ -52,6 +53,16 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'report_maker',
 ]
+
+REST_FRAMEWORK = {
+
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ),
+
+
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -82,7 +93,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'SignalApp.wsgi.application'
-ASGI_APPLICATION = 'SignalApp.wsgi.application'
+ASGI_APPLICATION = 'SignalApp.asgi.application'
 
 # CELERY
 ALGORITHM_MAX_CALC_TIME = 10
@@ -127,3 +138,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_ROOT = f"{BASE_DIR}/static"
+MEDIA_URL = '/media/'
+MEDIA_ROOT = f"{BASE_DIR}/media"

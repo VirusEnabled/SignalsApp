@@ -1,0 +1,185 @@
+{% load static %}
+{% csrf_token %}
+<nav class="navbar header-navbar pcoded-header" style="background-color:black; color: white;">
+    <div class="navbar-wrapper">
+        <div class="navbar-logo">
+            <!--<a class="mobile-menu" id="mobile-collapse" href="#!">-->
+                <!--&lt;!&ndash;<i class="feather icon-menu"></i>&ndash;&gt;-->
+                <!--<i class="feather icon-menu"></i>-->
+            <!--</a>-->
+            <div style="padding-left:20%; padding-bottom:30px;">
+                <a href="{% if request.user.is_staff %} {% url 'admin:admin' %} {% else %}{% url 'core:dashboard' %}{% endif %}" style="margin-left:20%;">
+                <h2  id="logo_home" class="logo-nav" style="">
+                   <i class="ion-ios-home"></i>
+                </h2>
+                <!--<h5 class="logo-nav-text" style="color:white; margin-left:40%; position:absolute;">-->
+                    <!--<strong>-->
+                    <!--TR-->
+                    <!--</strong>-->
+                <!--</h5>-->
+            </a>
+            </div>
+             <script>
+
+                    function adjust() {
+                    /*
+                    if((navigator.userAgent.indexOf("Opera") || navigator.userAgent.indexOf('OPR')) != -1 )
+                    {
+                    alert('Opera');
+                    }
+                    else if(navigator.userAgent.indexOf("Chrome") != -1 )
+                    {
+                    alert('Chrome');
+                    }
+                    else if(navigator.userAgent.indexOf("Safari") != -1)
+                    {
+                    alert('Safari');
+                    }
+                    else if((navigator.userAgent.indexOf("MSIE") != -1 ) || (!!document.documentMode == true )) //IF IE > 10
+                    {
+                    alert('IE');
+                    }
+                    */
+                    console.log("running...")
+                    var house_element = document.getElementById('logo_home');
+                    if(navigator.userAgent.indexOf("Firefox") != -1 )
+                    {
+                     house_element.style.marginTop="-11px";
+                    }
+
+                    else
+                    {
+                        if (window.innerWidth > 600)
+                        {
+                            house_element.style.marginTop="4px";
+                        }
+                        else
+                        {
+                           house_element.style.marginTop="-12px";
+                        }
+                    }
+                    }
+                    adjust();
+                    // setInterval(adjust(),3000);
+
+             </script>
+            <a class="mobile-options" style="margin-right:-10%; margin-left:90%;">
+                <i class="ion-drag"></i>
+            </a>
+        </div>
+
+        <div class="navbar-container container-fluid">
+            <div data-phase="0" class="offline-ui offline-ui-up offline-ui-up-5s">
+                <div class="offline-ui-content" data-retry-in="60" data-retry-in-abbr="">
+                </div>
+                <a class="offline-ui-retry"></a>
+            </div>
+
+            <ul class="nav-right nav_options_owner" style="display:block;position:absolute;">
+                {% if not request.user.is_staff %}
+                <li class="header-notification" id="opt" >
+                    <div class="dropdown-primary dropdown">
+                        <div class="dropdown-toggle" data-toggle="dropdown">
+                            <i class="ion-bag"></i>
+                            <span>Stores</span>
+                            <i class="feather icon-chevron-down"></i>
+                        </div>
+                        <ul id="store-display" class="show-notification profile-notification dropdown-menu" data-dropdown-in="fadeIn" data-dropdown-out="fadeOut">
+                            {% for store in stores_owned %}
+
+                            <li>
+                                <a href="{% url 'core:reload_store' store.unique_id %}">
+
+                                <!-- here we do the switch store -->
+                                    {{store.name|title}}
+                                    <span class="text-black">
+                                    {% if store.status == 'PA' %}
+                                            <label class="label bg-warning">PENDING</label>
+                                     {% elif store.status == 'A' %}
+                                            <label class="label bg-success">ACTIVE</label>
+                                     {% elif store.status == 'ED' %}
+                                            <label class="label bg-inverse">TROUBLE</label>
+                                     {% elif store.status == 'V' %}
+                                           <label class="label vacation_label">VACATION</label>
+                                     {% elif store.status == 'S' %}
+                                            <label class="label bg-danger">SUSPENDED</label>
+                                    {% elif store.status == 'DA' %}
+                                            <label class="label bg-danger">DENIED</label>
+                                    {% endif %}
+                                    </span>
+                                </a>
+
+                            </li>
+
+                            {% empty %}
+                            <li>
+                                You don't have any stores.
+                            </li>
+                            {% endfor %}
+
+                                <li>
+                                        <a href="{% url 'core:add_store' %}">
+                                            Add Store <i class="ion-plus"></i>
+                                        </a>
+
+                                </li>
+
+                        </ul>
+
+                    </div>
+                </li>
+                {% endif %}
+                <li class="user-profile header-notification prof">
+                    <div class="dropdown-primary dropdown">
+                        <div class="dropdown-toggle" data-toggle="dropdown">
+                            <img src="{{request.user.usertr.img.url}}" class="img-radius" alt="Img">
+                            <span>{{request.user.usertr.username|title}}</span>
+                        </div>
+                        <ul class="show-notification profile-notification dropdown-menu" data-dropdown-in="fadeIn" data-dropdown-out="fadeOut">
+                                {% if not request.user.is_staff %}
+                             <li>
+                                <a href="
+
+                                {% url 'core:show_profile' %}
+
+                                    ">
+                                    <i class="feather ion-person"></i> Profile
+                                </a>
+                            </li>
+
+                                {% endif %}
+                            <li>
+                                <a href="{% url 'core:logout' %}">
+                                    <i class="feather icon-log-out"></i> Logout
+                                </a>
+                            </li>
+
+                        </ul>
+
+                    </div>
+                </li>
+            </ul>
+            <!--<ul class="nav-right nav_options" style="display:block; position:absolute; margin-left:75%;">-->
+                <!--<li class="user-profile header-notification profx">-->
+                    <!--<div class="dropdown-primary dropdown">-->
+                        <!--<div class="dropdown-toggle" data-toggle="dropdown">-->
+                            <!--<img src="{{request.user.usertr.img.url}}" class="img-radius" alt="Img">-->
+                            <!--<span>{{user|title}}</span>-->
+                            <!--<i class="feather icon-chevron-down"></i>-->
+                        <!--</div>-->
+                        <!--<ul class="show-notification profile-notification dropdown-menu" data-dropdown-in="fadeIn" data-dropdown-out="fadeOut">-->
+                            <!--<li>-->
+                                <!--<a href="{% url 'core:logout' %}">-->
+                                    <!--<i class="feather icon-log-out"></i> Logout-->
+                                <!--</a>-->
+                            <!--</li>-->
+                        <!--</ul>-->
+
+                    <!--</div>-->
+                <!--</li>-->
+            <!--</ul>-->
+
+
+        </div>
+    </div>
+</nav>

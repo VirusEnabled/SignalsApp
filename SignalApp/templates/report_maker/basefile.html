@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}{% endblock %}| Signals App</title>
+    {% include 'includes/_meta.html' %}
+    {% load static %}
+    {% load crispy_forms_tags %}
+</head>
+<body class="flex-wrapper" style="background-color:white;">
+<div>
+    {% include 'includes/_navbar.html' %}
+</div>
+<div class="card" style="margin-bottom:126px;">
+
+</div>
+{% endif %}
+
+{% block body %}
+
+{% endblock %}
+</body>
+{% include 'includes/_footer_bar.html' %}
+
+{% include 'includes/footer.html' %}
+</html>

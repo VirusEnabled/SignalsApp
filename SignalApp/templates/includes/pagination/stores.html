@@ -1,0 +1,134 @@
+<!-- search bar -->
+
+<div class="form-group search-group">
+  <input type="text" placeholder="Search.." name="search" class="form-control" style="width:35%;" id="search_{{page_name}}">
+  <a type="submit" class="btn btn-warning btn-round search-btn" onclick="pagination_search('{{page_name}}', detail_id='{{detail_id}}')">
+      <i class="fa fa-search" style="color:white;"></i></a>
+</div>
+
+<!-- search bar ends -->
+
+<div class="table-responsive">
+    {% csrf_token %}
+    <table class="table table-de table table-striped table-bordered nowrap dataTable no-footer dtr- collapsed">
+        <thead>
+            <tr>
+                <th> Store Name</th>
+                <th> Status </th>
+                <th> Actions </th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for store in data_list %}
+            <tr>
+                <td>
+                    {{store.name|title}} |
+                    <a href="{% url 'admin:show_store' store.unique_id %}">
+                    View Store <i class="ion-eye"></i>
+            </a>
+                </td>
+                <td>
+                {% if store.status == 'PA' %}
+                <h6>
+                <label class="label bg-warning">PENDING</label>
+                </h6>
+                {% elif store.status == 'A' %}
+                <h6>
+                <label class="label bg-success">ACTIVE</label>
+                </h6>
+                {% elif store.status == 'ED' %}
+                <h6>
+                <label class="label bg-inverse">TROUBLE</label>
+                </h6>
+                {% elif store.status == 'V' %}
+                <h6>
+                <label class="label vacation_label">VACATION</label>
+                </h6>
+                {% elif store.status == 'S' %}
+                <h6>
+                 <label class="label bg-danger">SUSPENDED</label>
+                </h6>
+                {% elif store.status == 'DA' %}
+                <h6>
+                    <label class="label bg-danger">DENIED</label>
+                </h6>
+                {% endif %}
+                </td>
+
+                <td>
+
+                    <div class="form-group" align="left" style="margin-right:20px;">
+<div class="dropdown-warning dropdown open">
+<button class="btn btn-warning btn-round dropdown-toggle waves-effect waves-light " type="button" id="dropdown-5" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Actions</button>
+<div class="dropdown-menu" aria-labelledby="dropdown-5" data-dropdown-in="fadeIn" data-dropdown-out="fadeOut" x-placement="bottom-start" style="position: absolute; transform: translate3d(0px, 40px, 0px); top: 0px; left: 0px; will-change: transform;">
+<!--<a class="dropdown-item waves-light waves-effect" href="{% url 'admin:show_store' store.unique_id %}">Show Store Details </a>-->
+<a class="dropdown-item waves-light waves-effect" href="{% url 'admin:update_store' store.unique_id%}">Update Store</a>
+{% if store.walmartprofile %}
+<a class="dropdown-item waves-light waves-effect" href="{% url 'admin:update_walmart_info' store.unique_id%}">Update Walmart info</a>
+{% else %}
+<a class="dropdown-item waves-light waves-effect" href="{% url 'admin:add_walmart_info' store.unique_id %}">Add Walmart info to store </a>
+{% endif %}
+<div class="dropdown-divider"></div>
+<a class="dropdown-item waves-light waves-effect" data-toggle="modal" data-target="#delete-store-{{store.id}}">Delete register </a>
+
+</div>
+</div>
+
+</div>
+
+
+                </td>
+            </tr>
+             <!-- Modal normal sign in start -->
+                <div id="delete-store-{{store.id}}" class="modal fade create-form" role="dialog">
+                <div class="modal-dialog card">
+                    <i class="ion-close" data-dismiss="modal" style="margin-left:90%; margin-top:10px; margin-right:1px;"></i>
+                    <hr>
+                    <!--<form action="{% url 'admin:delete_record' store.unique_id page_name %}" method="post">-->
+                        <div class="card-block">
+                                <div class="modal-body">
+                                <h4 class="lead"> Are you sure you want to delete this record? </h4>
+                                </div>
+                                <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                <button class="btn btn-danger" onclick="delete_record('{{page_name}}','{{store.unique_id}}')">Delete Record</button>
+                                </div>
+                        </div>
+                    <!--</form>-->
+                </div>
+                </div>
+                 <!--Modal normal sign in end-->
+
+            {% empty %}
+                <div class="card">
+                    <h3 align="center">
+                        There's no Stores registered in the app.
+                    </h3>
+                </div>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="pagination" style="">
+        <span class="step-links">
+        {% if prior_page %}
+        <a class="pag" onclick="get_page('{{page_name}}',1,10,detail_id='{{detail_id}}')">&laquo; first</a>
+        <a class="pag" onclick="get_page('{{page_name}}',{{prior_page}},10,detail_id='{{detail_id}}')"> < previous</a>
+        {% endif %}
+
+        <span class="current">
+        {{total_pages}}
+        </span>
+
+        {% if next_page %}
+        <a class="pag" onclick="get_page('{{page_name}}',{{next_page}},10, detail_id='{{detail_id}}')">next > </a>
+        <a class="pag" onclick="get_page('{{page_name}}',{{last_page}},10,detail_id='{{detail_id}}')">last &raquo;</a>
+        {% endif %}
+
+        <span class="current">
+        {{per_page}}
+        </span>
+        </span>
+    </div>
+
+</div>
