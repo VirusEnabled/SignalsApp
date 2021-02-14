@@ -1,3 +1,157 @@
-from django.shortcuts import render
+import sys
+import os
+from django.shortcuts import render, redirect, reverse, get_object_or_404,HttpResponseRedirect, HttpResponse
+from django.views.generic import TemplateView, DetailView, ListView, RedirectView, GenericViewError
+from django.views.generic.edit import CreateView, UpdateView, DeleteView
+from django.contrib.auth.mixins import LoginRequiredMixin,AccessMixin
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from django.views import View
+from django.core.exceptions import ObjectDoesNotExist
+from django.contrib.auth.models import AnonymousUser
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import login, logout, authenticate, user_logged_in, user_logged_out
+from django.contrib import messages
+from rest_framework.parsers import JSONParser
+from django.core.files import File as DF
+from functools import wraps
+from django.http import JsonResponse, QueryDict as qd
+from django.views.decorators.csrf import csrf_protect, csrf_exempt
+from datetime import timedelta, datetime
+from .helpers import *
+from .models import *
+from .forms import *
+from django.views.defaults import page_not_found, server_error
 
-# Create your views here.
+
+def handler404(request, exception, template_name=None):
+    template_name = 'includes/_error_page.html'
+    response = HttpResponse(request,template_name)
+    response.status_code = status.HTTP_404_NOT_FOUND
+    response.content = {'status': response.status_code}
+    return render(request, template_name, {'status':response.status_code})
+    # return page_not_found(request,exception,template_name)
+
+
+def handler500(request, template_name=None):
+    template_name = 'includes/_error_page.html'
+    response = HttpResponse(request, template_name)
+    response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+    response.content = {'status': response.status_code}
+
+    return response
+    # return server_error(request,template_name)
+
+class LoginView(View):
+    template_name = 'report_maker/login.html'
+    extra_context = {}
+    form_class = LoginForm
+    success_redirect = 'report_maker:dashboard'
+
+    def load_form(self,request):
+        """
+        loads the form to be used
+        :return: None
+        """
+        self.form = self.form_class(request.POST)
+        self.next = request.GET.get('next') if 'next' in request.GET.keys() else None
+
+    def get(self, request):
+        """
+		loads the template and the form for the user
+		when requested with the http GET method
+		:param request:  HTTP request object
+		:return: HTTP response.
+		"""
+        if request.user.is_authenticated:
+            return redirect('report_maker:dashboard')
+        self.load_form(request)
+        context = {
+            'form': self.form
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        """
+		validates if whether the user is worth it to pass to the site or not.
+		:param request: HTTP request object
+		:return: redirect
+		"""
+        return self.validate_form()
+
+    def validate_form(self):
+        """
+		validates if the given data and tries to log the user Through amazon
+		if successful then returns it to the form valid otherwise to the form invalid.
+		here is where we do the two factor authentication verify the existance of the account
+		here then verify the existance of the account in Amazon. To pass, needs to pass in both parts.
+
+		Basically the code to validate in both sides is in the form
+		:return: Http response
+		"""
+        self.load_form(self.request)
+        error_msg = "The email or password incorrect, try again."
+        try:
+            if self.form.is_valid():
+                user_data = self.form.cleaned_data
+                user = User.objects.get(email__exact=user_data['email'])
+                authenticated = authenticate(username=user, password=user_data['password'])
+                # print('here',self.request, self.form.is_valid(), self.form.cleaned_data)
+                if authenticated:
+                    return self.form_valid(authenticated)
+            return self.form_invalid(error_msg)
+        except ObjectDoesNotExist:
+            error_msg = "The email provided doesn't exist in our system, please contact the admin."
+            return self.form_invalid(error_msg)
+
+    def form_valid(self, user):
+        """
+        this is the result of passing all evaluations of the user account
+        :return: http response
+        """
+        self.request.session.set_expiry(self.request.session.get_expiry_age() * 4)
+        login(self.request, user)
+        if self.next:
+            return HttpResponseRedirect(self.next, self.request)
+        return self.redirect_success()
+
+    def form_invalid(self, error=None):
+        """
+		returns the errors of the given values in the form fields.
+		:return: Http response
+		"""
+        if not error:
+            for error in self.form.errors:
+                messages.error(self.request, self.form.errors[error])
+        else:
+            messages.error(self.request, error)
+        return render(self.request, self.template_name, {'form': self.form})
+
+    def redirect_success(self):
+        """
+        redirects the user to the dashboard
+        :return: http redirect response
+        """
+        messages.success(self.request, 'You\'ve been successfully logged in')
+        return redirect(self.success_redirect)
+
+
+@login_required(redirect_field_name='next', login_url='report_maker:login')
+def logout_user(request):
+    logout(request)
+    messages.success(request,'You have been successfully logged out!')
+    return redirect('report_maker:login')
+
+
+class Dashboard(TemplateView, LoginRequiredMixin):
+    template_name = "report_maker/dashboard.html"
+    login_url = 'report_maker:login'
+    permission_denied_message = "In order to access to this part, you should be logged in"
+    http_method_names = ['get']
+    extra_context = {'available_stocks': TRADIER_API_OBJ.markets}
+
+
+
+
+

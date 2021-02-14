@@ -23,10 +23,44 @@ class RedisHandler(object):
 	def __init__(self):
 		self.client = generate_redis_object()
 
+	def get_item(self, key: str) -> tuple:
+		"""
+		gets the value required for the
+		existing key
+		:param key:
+		:return: tuple
+		"""
+		flag = False
+		result = "There was an error with your request"
+		try:
+			value = self.client.get(key).decode()
+			flag = True
+			result = json.loads(value)
+
+		except Exception as X:
+			result = f"{result}: {X}"
+
+		finally:
+			return flag, result
 
 
+	def load_value(self, key: str, value: dict) -> tuple:
+		"""
+		adds the value to a given key in
+		redis caching
+		:param key: str
+		:param value: dict
+		:return: tuple
+		"""
+		flag = False
+		result = "There was an error with your request"
+		try:
+			self.client.set(key, json.dumps(value))
+			flag = True
+			result = 'Success'
 
+		except Exception as X:
+			result = f"{result}: {X}"
 
-
-if __name__ == '__main__':
-	pass
+		finally:
+			return flag, result
