@@ -8,7 +8,7 @@
                 <!--<i class="feather icon-menu"></i>-->
             <!--</a>-->
             <div style="padding-left:20%; padding-bottom:30px;">
-                <a href="{% if request.user.is_staff %} {% url 'admin:admin' %} {% else %}{% url 'core:dashboard' %}{% endif %}" style="margin-left:20%;">
+                <a href="{% if request.user.is_authenticated %} {% url 'report_maker:dashboard' %} {% else %}{% url 'report_maker:login' %}{% endif %}" style="margin-left:20%;">
                 <h2  id="logo_home" class="logo-nav" style="">
                    <i class="ion-ios-home"></i>
                 </h2>
@@ -76,80 +76,15 @@
             </div>
 
             <ul class="nav-right nav_options_owner" style="display:block;position:absolute;">
-                {% if not request.user.is_staff %}
-                <li class="header-notification" id="opt" >
-                    <div class="dropdown-primary dropdown">
-                        <div class="dropdown-toggle" data-toggle="dropdown">
-                            <i class="ion-bag"></i>
-                            <span>Stores</span>
-                            <i class="feather icon-chevron-down"></i>
-                        </div>
-                        <ul id="store-display" class="show-notification profile-notification dropdown-menu" data-dropdown-in="fadeIn" data-dropdown-out="fadeOut">
-                            {% for store in stores_owned %}
-
-                            <li>
-                                <a href="{% url 'core:reload_store' store.unique_id %}">
-
-                                <!-- here we do the switch store -->
-                                    {{store.name|title}}
-                                    <span class="text-black">
-                                    {% if store.status == 'PA' %}
-                                            <label class="label bg-warning">PENDING</label>
-                                     {% elif store.status == 'A' %}
-                                            <label class="label bg-success">ACTIVE</label>
-                                     {% elif store.status == 'ED' %}
-                                            <label class="label bg-inverse">TROUBLE</label>
-                                     {% elif store.status == 'V' %}
-                                           <label class="label vacation_label">VACATION</label>
-                                     {% elif store.status == 'S' %}
-                                            <label class="label bg-danger">SUSPENDED</label>
-                                    {% elif store.status == 'DA' %}
-                                            <label class="label bg-danger">DENIED</label>
-                                    {% endif %}
-                                    </span>
-                                </a>
-
-                            </li>
-
-                            {% empty %}
-                            <li>
-                                You don't have any stores.
-                            </li>
-                            {% endfor %}
-
-                                <li>
-                                        <a href="{% url 'core:add_store' %}">
-                                            Add Store <i class="ion-plus"></i>
-                                        </a>
-
-                                </li>
-
-                        </ul>
-
-                    </div>
-                </li>
-                {% endif %}
                 <li class="user-profile header-notification prof">
                     <div class="dropdown-primary dropdown">
                         <div class="dropdown-toggle" data-toggle="dropdown">
-                            <img src="{{request.user.usertr.img.url}}" class="img-radius" alt="Img">
-                            <span>{{request.user.usertr.username|title}}</span>
+                            <img src="{% static 'img/logo1.png' %}" class="img-radius" alt="Img">
+                            <span>{{request.user.username|title}}</span>
                         </div>
                         <ul class="show-notification profile-notification dropdown-menu" data-dropdown-in="fadeIn" data-dropdown-out="fadeOut">
-                                {% if not request.user.is_staff %}
-                             <li>
-                                <a href="
-
-                                {% url 'core:show_profile' %}
-
-                                    ">
-                                    <i class="feather ion-person"></i> Profile
-                                </a>
-                            </li>
-
-                                {% endif %}
                             <li>
-                                <a href="{% url 'core:logout' %}">
+                                <a href="{% url 'report_maker:logout' %}">
                                     <i class="feather icon-log-out"></i> Logout
                                 </a>
                             </li>
@@ -169,7 +104,7 @@
                         <!--</div>-->
                         <!--<ul class="show-notification profile-notification dropdown-menu" data-dropdown-in="fadeIn" data-dropdown-out="fadeOut">-->
                             <!--<li>-->
-                                <!--<a href="{% url 'core:logout' %}">-->
+                                <!--<a href="{% url 'report_maker:logout' %}">-->
                                     <!--<i class="feather icon-log-out"></i> Logout-->
                                 <!--</a>-->
                             <!--</li>-->

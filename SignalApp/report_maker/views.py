@@ -149,7 +149,7 @@ class Dashboard(TemplateView, LoginRequiredMixin):
     login_url = 'report_maker:login'
     permission_denied_message = "In order to access to this part, you should be logged in"
     http_method_names = ['get']
-    extra_context = {'available_stocks': TRADIER_API_OBJ.markets}
+    extra_context = {'available_stocks': TRADIER_API_OBJ.load_markets()[:1000]}
 
 
 

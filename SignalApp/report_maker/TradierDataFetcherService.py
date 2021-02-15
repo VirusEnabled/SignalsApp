@@ -39,30 +39,30 @@ class TradierDataHandler(object):
             'Content-Type':'application/json'
         }
 
-    def refresh_access_token(self) -> None :
-        """
-        refreshes the existing access token
-        so that there's no isue with the
-        security of the site.
-        :return: None
-        """
-        endpoint = f"{self.api_root_endpoints['brokerage_rest']}oauth/refreshtoken"
-
-    def get_quotes(self):
-        """
-        gets all of the available quotes
-         for the existing stocks
-        :return: list
-        """
-        endpoint = f"{self.api_root_endpoints['brokerage_rest']}markets/quotes"
-
-    def get_quote(self, symbol: str) -> dict:
-        """
-        gets the quotes values for the given stock
-        :param symbol: str
-        :return: dict
-        """
-        endpoint = f"{self.api_root_endpoints['brokerage_rest']}markets/quotes"
+    # def refresh_access_token(self) -> None :
+    #     """
+    #     refreshes the existing access token
+    #     so that there's no isue with the
+    #     security of the site.
+    #     :return: None
+    #     """
+    #     endpoint = f"{self.api_root_endpoints['brokerage_rest']}oauth/refreshtoken"
+    #
+    # def get_quotes(self):
+    #     """
+    #     gets all of the available quotes
+    #      for the existing stocks
+    #     :return: list
+    #     """
+    #     endpoint = f"{self.api_root_endpoints['brokerage_rest']}markets/quotes"
+    #
+    # def get_quote(self, symbol: str) -> dict:
+    #     """
+    #     gets the quotes values for the given stock
+    #     :param symbol: str
+    #     :return: dict
+    #     """
+    #     endpoint = f"{self.api_root_endpoints['brokerage_rest']}markets/quotes"
 
 
     def load_exchanges(self) -> list:
@@ -111,7 +111,7 @@ class TradierDataHandler(object):
 
     def get_historical_data(self, symbol: str, interval: str =None,
                             start_date: date =None,
-                            end_date: date =None) -> dict:
+                            end_date: date =None) -> tuple:
         """
         gets the historical values on the existing
         stock for different markers olhcv
@@ -119,20 +119,31 @@ class TradierDataHandler(object):
         :param interval: str: when the data coming from, only options: daily, weekly, monthly
         :param start_date: date: when it should start parsing from: YYYY-MM-DD
         :param end_date: date: where it should stop on: YYYY-MM-DD
-        :return: dict
+        :return: tuple: bool and dict
         """
-        endpoint = f"{self.api_root_endpoints['brokerage_rest']}markets/history"
-        params = {'symbol': symbol,
-                  'interval': 'daily' if not interval else interval
-                  }
-        if start_date and end_date:
-            params['start'] = start_date.strftime("%YYYY-%MM-%DD")
-            params['end'] = end_date.strftime("%YYYY-%MM-%DD")
+        flag = False
+        result = {}
+        try:
+            endpoint = f"{self.api_root_endpoints['brokerage_rest']}markets/history"
+            params = {'symbol': symbol,
+                      'interval': 'daily' if not interval else interval
+                      }
+            if start_date and end_date:
+                params['start'] = start_date.isoformat()
+                params['end'] = end_date.isoformat()
 
-        response = req.get(endpoint, params=params, headers=self._headers)
-        # print(response, response.headers)
-        return response.json()
+            response = req.get(endpoint, params=params, headers=self._headers)
+            if not response.json()['history']:
+                result = {'error': f"The data related to the symbol: {symbol} was not found, try a different one"}
+            else:
+                flag = True
+                result = response.json()
+        except Exception as X:
+            flag = False
+            result = {'error': f"There was an error with the request: {X}, please try again later."}
 
+        finally:
+            return flag, result
 
     def get_all_historical_data_info(self, start_date: date =None,
                             end_date: date =None) -> tuple:
@@ -151,8 +162,11 @@ class TradierDataHandler(object):
                 self.get_historical_data(symbol, start_date=start_date, end_date=end_date)
                 for symbol in available_symbols
             ]
+            flag = True
         except Exception as X:
             historical_data = f"There was an error{X}"
 
         finally:
             return flag, historical_data
+
+

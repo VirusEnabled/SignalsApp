@@ -1,8 +1,19 @@
-{% extends 'core/basefile.html' %}
+{% extends 'report_maker/basefile.html' %}
 <title>{% block title %} Dashboard {% endblock %}</title>
 <body>
 {% block body %}
+{% csrf_token %}
 {% load static %}
+<div class="card">
+   {% for item in available_stocks %}
+        <div class="card">
+            <h5>
+                {{item}}
+            </h5>
+        </div>
+    {% endfor %}
+
+</div>
 
 {% endblock %}
 </body>

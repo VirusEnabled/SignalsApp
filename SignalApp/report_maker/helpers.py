@@ -1,7 +1,8 @@
 import plotly
 import pandas
-from datetime import datetime
+from datetime import datetime, timedelta
 from.TradierDataFetcherService import  *
+import statistics as stats
 
 TRADIER_API_OBJ = TradierDataHandler()
 
@@ -29,6 +30,37 @@ def generate_graph_calculations(ohlcv: list) -> plotly.graph_objs.histogram:
     :param ohlcv:list :values related to the historical data on the stock
     :return: graph historgram
     """
+
+
+def calculate_macd(data: list) -> pandas.DataFrame:
+    """
+    generates the calulation for the MACD
+    :param data:
+    :return:
+    """
+
+def calculate_adr(data: list) -> pandas.DataFrame:
+    """
+    generates the calulation for the ADR
+    :param data:
+    :return:
+    """
+
+def calculate_rsi(data: list) -> pandas.DataFrame:
+    """
+    generates the calulation for the RSI
+    :param data:
+    :return:
+    """
+
+
+def calculate_stochastic(data: list) -> pandas.DataFrame:
+    """
+    generates the calulation for the STOCHASTIC
+    :param data:
+    :return:
+    """
+
 
 
 def format_data(ohlcv: list) -> pandas.DataFrame:
