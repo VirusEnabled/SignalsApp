@@ -113,3 +113,6 @@ whitenoise
 django_celery_results
 django_celery_beat
 tradier
+statistics
+yfinance
+dash==1.19.0
