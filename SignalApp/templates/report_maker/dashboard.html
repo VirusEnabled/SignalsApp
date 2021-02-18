@@ -4,16 +4,109 @@
 {% block body %}
 {% csrf_token %}
 {% load static %}
-<div class="card">
-   {% for item in available_stocks %}
-        <div class="card">
-            <h5>
-                {{item}}
-            </h5>
+{% load crispy_forms_tags %}
+<style>
+    .front-selector{
+    width: 73%;
+
+    }
+
+    #go{
+    position: absolute;
+    margin-left: 74%;
+    margin-top: 28px;
+    }
+
+    #filters{
+    position: absolute;
+    margin-left: 80.5%;
+    margin-top: 28px;
+    }
+
+    .select-form{
+    margin-left: 1%;
+    padding: initial;
+
+    }
+    form{
+    margin-top:10px;
+    }
+    #title{
+    margin-left:20px;
+    }
+    #base-selector-form{
+    margin-left: 84px;
+    }
+    #graph_div{
+    margin-top:20px;
+    }
+    .graph_inner_container{
+        padding-left:2%;
+    }
+</style>
+    <h2 id="title">
+        Signals App
+    </h2>
+<div class="form-container">
+
+    <form id="base-selector-form" action="{% url 'report_maker:dashboard' %}" method="POST">
+        {% csrf_token %}
+        <div class="card select-form">
+            {{form|crispy}}
+            <button id="go" class="btn btn-round btn-success" type="submit">
+                Go <i class="ion-play"></i>
+            </button>
+            <a id="filters" data-toggle="modal" data-target="#action_form" class="btn btn-secondary btn-round">
+                Filters
+            </a>
         </div>
-    {% endfor %}
+
+    </form>
 
 </div>
 
+<div id="graph_div" class="card candlestick_graph_container">
+
+    {% include 'includes/_candlestick.html' %}
+
+</div>
+
+<div class="card operation_graphs_container">
+
+
+</div>
+
+<!-- Modal normal sign in start -->
+<div id="action_form" class="modal fade create-form" role="dialog">
+<div class="modal-dialog card">
+    <i class="ion-close" data-dismiss="modal" style="margin-left:90%; margin-top:10px; margin-right:1px;"></i>
+    <hr>
+    <div class="modal-header">
+        <h3 style="text-align:center;">
+            Stock Selection for operations
+        </h3>
+    </div>
+    <div class="card-block">
+        <form action="{% url 'report_maker:dashboard' %}" method="POST">
+            {% csrf_token %}
+            <div class="modal-body">
+                {{filter_form|crispy}}
+            </div>
+            <div class="modal-footer">
+                <button id="close_modal" type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button class="btn btn-success" type="submit">Generate Graph</button>
+            </div>
+        </form>
+
+</div>
+
+
+
+</div>
+</div>
+ <!--Modal normal sign in end-->
+
 {% endblock %}
 </body>
+
+

@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from django.views import View
+from django.template.loader import render_to_string
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.auth.decorators import login_required
@@ -148,10 +149,145 @@ class Dashboard(TemplateView, LoginRequiredMixin):
     template_name = "report_maker/dashboard.html"
     login_url = 'report_maker:login'
     permission_denied_message = "In order to access to this part, you should be logged in"
-    http_method_names = ['get']
-    extra_context = {'available_stocks': TRADIER_API_OBJ.load_markets()[:1000]}
+
+    http_method_names = ['get', 'post']
+    extra_context = {'available_stocks': TRADIER_API_OBJ.load_markets()[:10]}
+
+    def get(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return super().get(request, args,kwargs)
+        else:
+            messages.error(request,self.permission_denied_message)
+            return redirect('report_maker:login')
+
+    def get_context_data(self, **kwargs):
+        # self.extra_context['graph'] = get_stock_historical_candlestick_graph()
+        base_selection_form, selection_form = self.get_forms(self.request)
+        self.extra_context['filter_form'] = selection_form
+        self.extra_context['form'] = base_selection_form
+        return super().get_context_data(**kwargs)
 
 
+    def get_forms(self, request):
+        """
+        loads the forms needed to
+        finish the operations
+        :return: tuple
+        """
+        self.form = StockGenericOperation(request.POST)
+        self.filters_form =  StockOperationForm(request.POST)
+        return self.form, self.filters_form
 
 
+    def post(self, request):
+        """
+        covers the post request for the dashboard
+        it should get the form
+        :return: graph
+        """
+        form, filters =self.get_forms(request)
+        context = {}
+        validate = filters.is_valid()
+        if form.is_valid() or validate:
+            filters_data = filters.cleaned_data if filters.is_valid() else None
+            data = form.cleaned_data
+            today = date.today().isoformat()
+            a_year_back = (date.today() - timedelta(days=365)).isoformat()
+            if validate:
+                if filters_data['start_date'] >= filters_data['end_date']:
+                    messages.error(request, f"There's was a problem generating the graph: "
+                                            f"The dates provided don't match.\n the start date can't be greater or "
+                                            f"equal then the end date, try again.")
+                    return self.get(request)
 
+            passed, graph = get_stock_historical_candlestick_graph(symbol=data['stock'] if not filters_data else \
+                                                                    filters_data['stock'],
+                                                                   start_date=a_year_back if not filters_data else\
+                                                                       filters_data['start_date'].isoformat(),
+                                                                   end_date=today if not filters_data else \
+                                                                       filters_data['end_date'].isoformat(),
+                                                                   interval='daily' if not filters_data else \
+                                                                       filters_data['interval'].lower())
+            if passed:
+                messages.success(request,"The graph was generated successfully!")
+                context = self.get_context_data()
+                context['graph'] = graph
+                return render(request, self.template_name, context=context)
+
+            else:
+                messages.error(request, f"There's was a problem generating the graph: {graph['error']}, try again.")
+
+        else:
+            messages.error(request, f"There's was a problem with your request, "
+                                    f"please try again.{filters.errors if not filters.is_valid() else ''}")
+        return self.get(request)
+
+
+@login_required(login_url="report_maker:login",redirect_field_name='next')
+@api_view(http_method_names=['POST'])
+def generate_graphs(request):
+    """
+    gets the request for the given
+    data and returns the data in a json string
+    :param request: http request
+    :return: json
+    """
+    s = status.HTTP_404_NOT_FOUND
+    response = {'message':''}
+    data = request.data
+    data['user'] = request.user.username
+    # print(data)
+    candlestick_template = "includes/_candlestick.html"
+    passed, graph = get_stock_historical_candlestick_graph(symbol=data['selected_stock'],
+                                                           start_date=data['start_date'],
+                                                           end_date=data['end_date'],
+                                                           interval=data['selected_interval'].lower())
+    if passed:
+        s = status.HTTP_200_OK
+        response['message'] = "the graphs has been generated successfully"
+        response['candlestick_graph'] = render_to_string(candlestick_template, {'graph':graph})
+        response['candlestick_graph'] = graph
+
+    else:
+        response['message'] = graph['error']
+        s = status.HTTP_400_BAD_REQUEST
+
+    return Response(status=s, data=response)
+
+
+"""
+@login_required()
+# @api_view(http_method_names=['POST'])
+def generate_graphs(request):
+
+    # gets the request for the given
+    # data and returns the data in a json string
+    # :param request: http request
+    # :return: http response
+
+    s = status.HTTP_404_NOT_FOUND
+    template_name = "report_maker/dashboard.html"
+    response = {'message':''}
+    data = request.POST
+    # data['user'] = request.user.username
+    print(data)
+    if request.method == 'POST':
+        candlestick_template = "includes/_candlestick.html"
+        passed, graph = get_stock_historical_candlestick_graph(symbol=data['selected_stock'],
+                                                               start_date=data['start_date'],
+                                                               end_date=data['end_date'],
+                                                               interval=data['selected_interval'].lower())
+        if passed:
+            # s = status.HTTP_200_OK
+            # response['message'] = "the graphs has been generated successfully"
+            # response['candlestick_graph'] = render_to_string(candlestick_template, {'graph':graph})
+            messages.success(request,"the graphs has been generated successfully")
+            return render(request, template_name, {'graph':graph})
+        else:
+            response['message'] = graph['error']
+            s = status.HTTP_400_BAD_REQUEST
+            messages.error(request, graph['error'])
+    return render(request, template_name, {})
+        # return Response(status=s, data=response)
+
+"""

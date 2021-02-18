@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 from pathlib import Path
 import os, sys
 from config import Config as conf
+from redis_caching import RedisHandler
+
 conf_obj = conf()
 CONFIG = conf_obj.config
 
@@ -28,6 +30,8 @@ SECRET_KEY = '=%0_xgewm*2z7fyr*^nt$c6j7h%4xt$ibr)bc#dgub20=gxdq3'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 PROD = conf_obj.get_site_env
+
+REDIS_OBJ = RedisHandler()
 
 if PROD:
     from .production_settings import *

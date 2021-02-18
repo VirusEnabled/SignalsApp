@@ -12,5 +12,6 @@ urlpatterns = [
     path('',LoginView.as_view(),name='login'),
     path('dashboard', Dashboard.as_view(), name='dashboard'),
     path('logout', logout_user, name='logout'),
+    path('generate_graphs', generate_graphs, name='generate_graphs'),
 
     ]+static(settings.STATIC_URL, document_root=settings.MEDIA_URL)

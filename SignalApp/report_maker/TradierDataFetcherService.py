@@ -86,7 +86,8 @@ class TradierDataHandler(object):
             market_file.write("]")
         market_file.close()
 
-    def load_markets(self):
+    @classmethod
+    def load_markets(cls):
         """
         loads the values from
         the market file object
@@ -108,17 +109,43 @@ class TradierDataHandler(object):
         response = req.get(endpoint)
         return response.json()
 
+    #not needed
+    def get_company_information(self, symbol):
+        """
+        loads the company information
+        :param symbol: str
+        :return: tuple
+        """
+        status, result = False, {}
+        try:
+            endpoint = f"https://api.tradier.com/beta/markets/fundamentals/company"
+            params = {'symbols': symbol}
+            response = req.get(endpoint, params=params, headers=self._headers)
+            print(response.text)
+            if not response.json()['securities']:
+                result = {'error': f"The data related to the symbol: {symbol} was not found, try a different one"}
+            else:
+                status = True
+                result = response.json()
+        except Exception as X:
+            status = False
+            result = {'error': f"There was an error with the request: {X}, please try again later."}
+
+        finally:
+            return status, result
+
+
 
     def get_historical_data(self, symbol: str, interval: str =None,
-                            start_date: date =None,
-                            end_date: date =None) -> tuple:
+                            start_date: str =None,
+                            end_date: str =None) -> tuple:
         """
         gets the historical values on the existing
         stock for different markers olhcv
         :param symbol: str: symbol that represents the stock
         :param interval: str: when the data coming from, only options: daily, weekly, monthly
-        :param start_date: date: when it should start parsing from: YYYY-MM-DD
-        :param end_date: date: where it should stop on: YYYY-MM-DD
+        :param start_date: str: when it should start parsing from: YYYY-MM-DD
+        :param end_date: str: where it should stop on: YYYY-MM-DD
         :return: tuple: bool and dict
         """
         flag = False
@@ -129,10 +156,11 @@ class TradierDataHandler(object):
                       'interval': 'daily' if not interval else interval
                       }
             if start_date and end_date:
-                params['start'] = start_date.isoformat()
-                params['end'] = end_date.isoformat()
+                params['start'] = start_date
+                params['end'] = end_date
 
             response = req.get(endpoint, params=params, headers=self._headers)
+            # print(response.text)
             if not response.json()['history']:
                 result = {'error': f"The data related to the symbol: {symbol} was not found, try a different one"}
             else:
