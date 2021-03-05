@@ -13,10 +13,28 @@ class BaseModel(models.Model):
 
 class Stock(BaseModel):
     symbol = models.CharField(max_length=100)
+    stock_details = models.TextField(default="{}")
 
 
     def __str__(self):
         return f"<{self.symbol}>"
+
+    @staticmethod
+    def exists(symbol):
+        """
+        verifies if the given symbol is in the db
+        :param symbol: str
+        :return: bool
+        """
+        result = False
+        try:
+            stock =Stock.objects.get(symbol=symbol)
+            result = True
+
+        except models.ObjectDoesNotExist:
+            pass
+        finally:
+            return result
 
 
 
@@ -53,5 +71,17 @@ class HistoricalData(BaseModel):
     def v(self):
         return self.volume
 
+
+
+class IndicatorCalculationData(BaseModel):
+    indicators = [('STOCHASTIC','STOCHASTIC'),('RSI',"RSI"),
+                  ('MACD','MACD'),('ADR','ADR'),]
+    stock = models.ForeignKey(Stock, on_delete=models.CASCADE)
+    indicator = models.CharField(choices=indicators,max_length=100)
+    operation_data = models.TextField(default="{}")
+
+
+    def __str__(self):
+        return f"<{self.symbol}>"
 
 

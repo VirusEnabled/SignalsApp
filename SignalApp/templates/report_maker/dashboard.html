@@ -43,6 +43,11 @@
     .graph_inner_container{
         padding-left:2%;
     }
+
+    .inner-graph{
+        margin-top:-1%;
+
+    }
 </style>
     <h2 id="title">
         Signals App
@@ -64,7 +69,6 @@
     </form>
 
 </div>
-
 <div id="graph_div" class="card candlestick_graph_container">
 
     {% include 'includes/_candlestick.html' %}
@@ -72,7 +76,32 @@
 </div>
 
 <div class="card operation_graphs_container">
+{% if graph  %}
 
+    <div class="card inner-graph" id="rsi-graph">
+        {% include 'includes/_rsi.html' %}
+
+    </div>
+
+    <div class="card inner-graph" id="stochastic-graph">
+        {% include 'includes/_stochastic.html' %}
+
+    </div>
+
+    <div class="card inner-graph" id="macd-graph">
+        {% include 'includes/_macd.html' %}
+
+    </div>
+
+    <div class="card inner-graph" id="adr-graph">
+        {% include 'includes/_adr.html' %}
+
+    </div>
+{% else %}
+    <h4 style="text-align:center;">
+        You need to Hit start To generate the Indicators
+    </h4>
+{%  endif %}
 
 </div>
 
