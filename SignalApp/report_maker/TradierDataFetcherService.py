@@ -135,6 +135,45 @@ class TradierDataHandler(object):
             return status, result
 
 
+    def live_market_data_getter(self, symbol:str , interval:str =None,
+                                start_date: datetime=datetime.today()-timedelta(days=365),
+                                end_date: datetime=datetime.today())->tuple:
+        """
+        get the data coming from the markets
+        this data should be live data meaning
+        actual data coming in based on the given symbol
+        :param symbol: str symbol needed
+        :param interval : str : Interval of time per timesale. One of: tick, 1min, 5min, 15min
+        :param start_date: datetime: when to start parsing from
+        :param end_date: datetime: when to stop parsing to
+        :return: tuple
+        """
+        flag = False
+        result = {}
+        try:
+            endpoint = f"{self.api_root_endpoints['brokerage_rest']}markets/timesales"
+            params = {'symbol': symbol,
+                      'interval': '5min' if not interval else interval,
+                      'start':start_date,
+                      'end': end_date
+                      }
+            response = req.get(endpoint, params=params, headers=self._headers)
+            if not response.json()['series']:
+                result = {'error': f"The data related to the symbol: {symbol} was not found, try a different one"}
+            else:
+                flag = True
+                result = response.json()['series']['data']
+        except json.JSONDecodeError as JS:
+            flag = False
+            result = {'error': f"There was an error with the request: {response.text}, please try again later."}
+
+        except Exception as X:
+            flag = False
+            result = {'error': f"There was an error with the request: {X}, please try again later."}
+
+        finally:
+            return flag, result
+
 
     def get_historical_data(self, symbol: str, interval: str =None,
                             start_date: str =None,
@@ -191,6 +230,7 @@ class TradierDataHandler(object):
                 for symbol in available_symbols
             ]
             flag = True
+
         except Exception as X:
             historical_data = f"There was an error{X}"
 

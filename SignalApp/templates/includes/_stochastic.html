@@ -1,0 +1,10 @@
+<div class="graph_inner_container">
+        {% if stochastic_graph %}
+                {{ stochastic_graph |safe }}
+        {% else %}
+            <h3 style="text-align:center;">
+                Please start the process by filling out the form by clicking in the button start
+            </h3>
+
+        {% endif %}
+</div>

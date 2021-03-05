@@ -21,10 +21,9 @@ from django.http import JsonResponse, QueryDict as qd
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from datetime import timedelta, datetime
 from .helpers import *
-from .models import *
 from .forms import *
 from django.views.defaults import page_not_found, server_error
-
+from django.conf import settings
 
 def handler404(request, exception, template_name=None):
     template_name = 'includes/_error_page.html'
@@ -162,9 +161,11 @@ class Dashboard(TemplateView, LoginRequiredMixin):
 
     def get_context_data(self, **kwargs):
         # self.extra_context['graph'] = get_stock_historical_candlestick_graph()
-        base_selection_form, selection_form = self.get_forms(self.request)
+        base_selection_form, selection_form, historical_form = self.get_forms(self.request)
         self.extra_context['filter_form'] = selection_form
         self.extra_context['form'] = base_selection_form
+        self.extra_context['historical_query_form'] = historical_form
+
         return super().get_context_data(**kwargs)
 
 
@@ -176,52 +177,78 @@ class Dashboard(TemplateView, LoginRequiredMixin):
         """
         self.form = StockGenericOperation(request.POST)
         self.filters_form =  StockOperationForm(request.POST)
-        return self.form, self.filters_form
+        self.historical_form = HistoricalStockOperationForm(request.POST)
+        return self.form, self.filters_form, self.historical_form
 
-
+    # might need to fix it when we go live
     def post(self, request):
         """
         covers the post request for the dashboard
         it should get the form
         :return: graph
         """
-        form, filters =self.get_forms(request)
+        form, filters, historical_form =self.get_forms(request)
         context = {}
         validate = filters.is_valid()
         if form.is_valid() or validate:
             filters_data = filters.cleaned_data if filters.is_valid() else None
             data = form.cleaned_data
-            today = date.today().isoformat()
-            a_year_back = (date.today() - timedelta(days=365)).isoformat()
+            current_date = datetime.today().now()
+            today = current_date.strftime("%Y-%m-%d %H:%m")
+            # a_year_back = (datetime.today() - timedelta(days=365)).strftime("%Y-%m-%d %H:%m")
+            start_year =(datetime(current_date.year,1,
+                                  current_date.day)+timedelta(days=2)).strftime("%Y-%m-%d %H:%m")
+            saved, value = settings.REDIS_OBJ.save_graph_refresh_time(user=request.user, symbol=data['stock'], refresh_time=today)
+            if not saved:
+                messages.error(request, f"There's was a problem generating the graph: "
+                                        f"We couldn't save the last refresh time because: {value}")
+                return self.get(request)
+
             if validate:
-                if filters_data['start_date'] >= filters_data['end_date']:
+                if filters_data['start_date'] > filters_data['end_date']:
                     messages.error(request, f"There's was a problem generating the graph: "
                                             f"The dates provided don't match.\n the start date can't be greater or "
                                             f"equal then the end date, try again.")
                     return self.get(request)
 
-            passed, graph = get_stock_historical_candlestick_graph(symbol=data['stock'] if not filters_data else \
+            passed, graphs = generate_graph_calculations(symbol=data['stock'] if not filters_data else \
                                                                     filters_data['stock'],
-                                                                   start_date=a_year_back if not filters_data else\
-                                                                       filters_data['start_date'].isoformat(),
+                                                                   start_date=start_year if not filters_data else\
+                                                                       self.process_time(filters_data['start_date'],
+                                                                                         filters_data['start_time']),
                                                                    end_date=today if not filters_data else \
-                                                                       filters_data['end_date'].isoformat(),
-                                                                   interval='daily' if not filters_data else \
-                                                                       filters_data['interval'].lower())
+                                                                       self.process_time(filters_data['end_date'],
+                                                                                         filters_data['end_time']),
+                                                                    interval='15min' if not filters_data else\
+                                                                            filters_data['interval']
+                                                                   )
             if passed:
                 messages.success(request,"The graph was generated successfully!")
                 context = self.get_context_data()
-                context['graph'] = graph
+                print(graphs.keys())
+                for key in graphs:
+                    context[key] = graphs[key]
+
                 return render(request, self.template_name, context=context)
 
             else:
-                messages.error(request, f"There's was a problem generating the graph: {graph['error']}, try again.")
+                messages.error(request,
+                               f"There's was a problem generating the graph: {graphs['error']}, try again.")
 
         else:
             messages.error(request, f"There's was a problem with your request, "
                                     f"please try again.{filters.errors if not filters.is_valid() else ''}")
         return self.get(request)
 
+
+    def process_time(self, dt: date, dtime: time) -> str:
+        """
+        converts the two given object into one
+        :param dt: date object
+        :param dtime: time object
+        :return: str
+        """
+        return f"{dt.isoformat()} {dtime.isoformat()}"
 
 @login_required(login_url="report_maker:login",redirect_field_name='next')
 @api_view(http_method_names=['POST'])
