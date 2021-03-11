@@ -66,10 +66,10 @@ class StockOperationForm(Form):
                                   ]
     stock = StockChoiceField()
     start_date = fields.DateField()
-    start_time = fields.TimeField()
+    # start_time = fields.TimeField()
     end_date = fields.DateField()
-    end_time = fields.TimeField()
-    interval=ChoiceField(choices=shift_options)
+    # end_time = fields.TimeField()
+    # interval=ChoiceField(choices=shift_options)
 
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
@@ -77,6 +77,6 @@ class StockOperationForm(Form):
             self.fields[field].widget.attrs['class']='form-control'
         self.fields['start_date'].widget = widgets.DateInput({'class':'form-control', 'type': 'date'})
         self.fields['end_date'].widget = widgets.DateInput({'class':'form-control', 'type': 'date'})
-        self.fields['start_time'].widget = widgets.DateInput({'class': 'form-control', 'type': 'time'})
-        self.fields['end_time'].widget = widgets.DateInput({'class': 'form-control', 'type': 'time'})
+        # self.fields['start_time'].widget = widgets.DateInput({'class': 'form-control', 'type': 'time'})
+        # self.fields['end_time'].widget = widgets.DateInput({'class': 'form-control', 'type': 'time'})
 

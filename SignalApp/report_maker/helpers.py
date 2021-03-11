@@ -1,13 +1,16 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from.TradierDataFetcherService import  *
 # import statistics as stats
 import plotly.graph_objects as p_go
+from plotly.offline import iplot
 # import plotly.express as px
 from plotly.subplots import make_subplots
 import pandas as pd
 import pdb
 import json
+import time
 from .models import *
+import calendar
 
 
 TRADIER_API_OBJ = TradierDataHandler()
@@ -47,7 +50,119 @@ def generate_candle_sticks_graph(stock_historical_data, stock_details):
     fig_candlestick.layout.yaxis2.showgrid = False
     return fig_candlestick.to_html(full_html=False, default_height=700, default_width=1400)
 
-# need to remove the gaps between the graphs based on what's needed
+# def generate_definite_graph(data: dict, stock_details: dict):
+#     """
+#     generates the definite graph needed in order to manage the values required
+#     and provide a final graph
+#     :param data: dict
+#     :param stock_details: dict
+#     :return: plotly graph
+#     """
+#
+#
+#     status, calendar = TRADIER_API_OBJ.get_market_calendar("2020")
+#     # pdb.set_trace()
+#     graph = make_subplots(rows=5, cols=1)
+#     for option in data.keys():
+#         df = data[option]
+#
+#         if option == 'olhcv':
+#             inner_graph = p_go.Candlestick(x=df['time'],
+#                                            open=df['open'], high=df['high'],
+#                                            low=df['low'], close=df['close'])
+#             graph.append_trace(inner_graph, 1, 1)
+#             # graph.add_trace(p_go.Bar(x=df['time'], y=df['volume']),
+#             #                 secondary_y=False)
+#             graph.update_traces(name='OHLC', selector=dict(type='candlestick'))
+#             # graph.update_traces(name='Volume', selector=dict(type='bar'), opacity=0.70)
+#             # graph.update_layout(height=750)
+#             graph.update_xaxes(
+#                 rangeslider_visible=True,
+#                 rangebreaks=[
+#                     # NOTE: Below values are bound (not single values), ie. hide x to y
+#                     dict(bounds=["sat", "mon"]),
+#                     dict(bounds=[22, 6], pattern="hour"),
+#                     # dict(values=["2020-12-25", "2021-01-01"])  # hide holidays (Christmas and New Year's, etc)
+#                 ]
+#             )
+#             # graph.update_xaxes(rangebreaks=[dict(values=dt_breaks)])
+#
+#
+#         elif option == 'rsi':
+#             graph.append_trace(p_go.Scatter(y=df['time'], x=df['operation_data']), 2, 1)
+#             graph.update_traces(name='RSI', showlegend=True, selector=dict(type='scatter'))
+#             # graph.update_layout(height=300)
+#
+#         elif option == 'stochastic':
+#             graph.append_trace(p_go.Scatter(x=df['time'], y=df['k_fast'],
+#                                          y0=df['d_slow'],
+#                                          name='k_fast'), 3, 1)
+#             graph.update_traces(name='K_FAST', showlegend=True, selector=dict(type='scatter',
+#                                                                               name='k_fast'), line_color='green')
+#
+#             graph.add_trace(p_go.Scatter(x=df['time'], y=df['k_slow'],
+#                                          name='k_slow'))
+#             graph.update_traces(name='K_SLOW', showlegend=True, selector=dict(type='scatter',
+#                                                                               name='k_slow'), line_color='magenta')
+#             # graph.update_layout(height=300)
+#
+#
+#         elif option == 'macd':
+#             graph.append_trace(p_go.Scatter(x=df['time'], y=df['macd'],
+#                                          name='MACD'), 4, 1)
+#             graph.update_traces(name='MACD', showlegend=True, selector=dict(type='scatter',
+#                                                                             name='MACD'),
+#                                 line_color='red')
+#             graph.add_trace(p_go.Scatter(x=df['time'], y=df['signal'],
+#                                          name='Signal Line'))
+#
+#             graph.update_traces(name='Signal Line', showlegend=True,
+#                                 selector=dict(type='scatter',
+#                                               name='Signal Line'), line_color='purple')
+#
+#             # graph.update_layout(height=300)
+#
+#         elif option == 'adr':
+#             graph.append_trace(p_go.Scatter(y=df['time'], x=df['operation_data'],
+#                                          name='adr'), 5, 1)
+#             graph.update_traces(name='adr', showlegend=True, selector=dict(type='scatter',
+#                                                                            name='adr'),
+#                                 line_color='orange')
+#
+#             # graph.update_layout(height=300)
+#
+#     graph.update_layout(
+#         title=f'{stock_details["Name"]} Market Graphs',
+#         yaxis_title=f'{stock_details["Code"]} Stock',
+#         legend=dict(
+#             yanchor="top",
+#             y=0.999,
+#             xanchor="left",
+#             x=-0.05
+#         )
+#     )
+#
+#     graph.update_layout(xaxis_rangeslider_visible=False)
+#
+#         # graph.layout.yaxis2.showgrid = True
+#
+#     return graph
+def get_year_weekends():
+    """
+    gets the current year's weekends dates
+    :return: list
+    """
+    weekends = []
+    current_year = date.today().year
+    for month in range(1,13):
+        for week in calendar.monthcalendar(current_year,month=month):
+            if week[-2] != 0:
+                weekends.append(date(year=current_year,month=month,day=week[-2]).isoformat())
+
+            if week[-1] != 0:
+                weekends.append(date(year=current_year,month=month,day=week[-1]).isoformat())
+    return weekends
+
 def generate_live_graph(stock_data:pd.DataFrame, stock_details, option: str='olhcv'):
     """
     generated the basic candlestick diagrams based ont
@@ -62,7 +177,8 @@ def generate_live_graph(stock_data:pd.DataFrame, stock_details, option: str='olh
     -macd
     :return: plotly graph
     """
-
+    status, calendar = TRADIER_API_OBJ.get_market_calendar("2020")
+    # pdb.set_trace()
     df = stock_data
     graph =  make_subplots(specs=[[{"secondary_y": True}]])
 
@@ -72,22 +188,21 @@ def generate_live_graph(stock_data:pd.DataFrame, stock_details, option: str='olh
                                        low=df['low'], close=df['close'])
         graph.add_trace(inner_graph,
                         secondary_y=True)
-        graph.add_trace(p_go.Bar(x=df['time'], y=df['volume']),
-                        secondary_y=False)
+        # graph.add_trace(p_go.Bar(x=df['time'], y=df['volume']),
+        #                 secondary_y=False)
         graph.update_traces(name='OHLC', selector=dict(type='candlestick'))
-        graph.update_traces(name='Volume', selector=dict(type='bar'), opacity=0.70)
+        # graph.update_traces(name='Volume', selector=dict(type='bar'), opacity=0.70)
         graph.update_layout(height=750)
+
         graph.update_xaxes(
             rangeslider_visible=True,
             rangebreaks=[
-                # NOTE: Below values are bound (not single values), ie. hide x to y
-                dict(bounds=["fri", "mon"]),  # hide weekends, eg. hide sat to before mon
-                dict(bounds=[16, 9.5], pattern="hour"),  # hide hours outside of 9.30am-4pm
-                # dict(values=["2020-12-25", "2021-01-01"])  # hide holidays (Christmas and New Year's, etc)
+                dict(bounds=["sat", "sun"]),
+                dict(bounds=[22, 7], pattern="hour"),
+                dict(values=get_year_weekends()+["2020-12-25", "2021-01-01"])  # hide holidays (Christmas and New Year's, etc)
             ]
         )
         # graph.update_xaxes(rangebreaks=[dict(values=dt_breaks)])
-
 
     elif option == 'rsi':
         graph.add_trace(p_go.Scatter(y=df['time'], x=df['operation_data']),
@@ -112,9 +227,6 @@ def generate_live_graph(stock_data:pd.DataFrame, stock_details, option: str='olh
 
 
     elif option == 'macd':
-        pass
-        # plt.plot(df.ds, macd, label='AMD MACD', color='#EBD2BE')
-        # plt.plot(df.ds, exp3, label='Signal Line', color='#E5A4CB')
         graph.add_trace(p_go.Scatter(x=df['time'], y=df['macd'],
                                      name='MACD'),
                         secondary_y=True)
@@ -128,6 +240,16 @@ def generate_live_graph(stock_data:pd.DataFrame, stock_details, option: str='olh
         graph.update_traces(name='Signal Line', showlegend=True,
                             selector=dict(type='scatter',
                                           name='Signal Line'), line_color='purple')
+
+        graph.update_layout(height=300)
+
+    elif option == 'adr':
+        graph.add_trace(p_go.Scatter(y=df['time'], x=df['operation_data'],
+                                     name='adr'),
+                        secondary_y=True)
+        graph.update_traces(name='adr', showlegend=True, selector=dict(type='scatter',
+                                                                          name='adr'),
+                            line_color='orange')
 
         graph.update_layout(height=300)
 
@@ -271,12 +393,24 @@ def calculate_macd(data: pd.DataFrame) -> pd.DataFrame:
 
 
 
-def calculate_adr(data: list) -> pd.DataFrame:
+def calculate_adr(dt: pd.DataFrame) -> pd.DataFrame:
     """
     generates the calulation for the ADR
     :param data:
-    :return:
+    :return: pandas DataFrame
     """
+    data = dt.copy()
+    high = data['high'].astype(dtype=float)
+    low = data['low'].astype(dtype=float)
+    close = data['close'].astype(dtype=float)
+    data['tr0'] = abs(high - low)
+    data['tr1'] = abs(high - close.shift())
+    data['tr2'] = abs(low - close.shift())
+    tr = data[['tr0', 'tr1', 'tr2']].max(axis=1)
+    adr = lambda values, n: values.ewm(alpha=1/n, adjust=False).mean()
+    return adr(tr,14)
+
+
 
 def calculate_rsi(data: pd.DataFrame) -> pd.Series:
     """
@@ -324,7 +458,9 @@ def calculate_stochastic(data: pd.DataFrame) -> pd.DataFrame:
 
     # Fast Stochastic
     # pdb.set_trace()
-    stochastic['k_fast'] = 100 * (stochastic['close'].astype(dtype=float) - low_min) / (high_max - low_min)
+    stochastic['k_fast'] = 100 * (stochastic['close'].astype(dtype=float) -
+                                  low_min.astype(dtype=float)) / (high_max.astype(dtype=float) -
+                                                                  low_min.astype(dtype=float))
     stochastic['d_fast'] = stochastic['k_fast'].rolling(window=d).mean()
 
     # Slow Stochastic
@@ -332,17 +468,6 @@ def calculate_stochastic(data: pd.DataFrame) -> pd.DataFrame:
     stochastic['d_slow'] = stochastic['k_slow'].rolling(window=d).mean()
 
     return stochastic
-
-
-
-def format_data(ohlcv: list) -> pd.DataFrame:
-    """
-    formats the data coming from the dict
-    and turns it into a dataframe
-    :param ohlcv: list of values
-    :return: pandas DataFrame Object
-    """
-
 
 
 def schedule_auto_save(schedule: datetime) -> bool:
@@ -406,6 +531,55 @@ def store_data(stock_details:dict,
     finally:
         return status, error
 
+
+def process_data(data):
+    """
+    turns the 15m interval into 1h interval
+    :param data:
+    :return: series
+    """
+    x = data.to_list()
+    serialized = []
+    last = 0
+    for i in range(4,len(x),4):
+        serialized.append(sum(float(y) for y in x[last:i]))
+        # print(last,i,x[last:i],sum(x[last:i]))
+        last += 4
+        # pdb.set_trace()
+        # time.sleep(20)
+    return pd.Series(data={k:v for k, v in enumerate(serialized)})
+
+
+def serialize_time(dtime):
+    """
+    serializes the time, basically extracts the hours
+    :param dtime: Series
+    :return:Series
+    """
+    dates = dtime.to_list()
+    serialized = []
+    for di in dates:
+        d = datetime.fromisoformat(di)
+        if d.minute == 0:
+            serialized.append(d.isoformat())
+
+    return pd.Series(data={k: v for k, v in enumerate(serialized)})
+
+
+def serialize_data(data: pd.DataFrame)->pd.DataFrame:
+    """
+    transforms the daily data into hourly data
+    :param data: pd.data frame
+    :return: data frame
+    """
+    final = pd.DataFrame(data={'open': process_data(data['open']), 'high': process_data(data['high']),
+                           'low': process_data(data['low']), 'close': process_data(data['close']),
+                           'volume': process_data(data['volume']),
+                           'time': serialize_time(data['time'])})
+    return final
+
+
+
 def generate_graph_calculations(symbol, start_date=None,
                                            end_date=None, interval='15min') -> tuple:
     """
@@ -428,38 +602,45 @@ def generate_graph_calculations(symbol, start_date=None,
     """
     status, result = False, {'error':""}
     try:
-        # status, adr = calculate_adr()
         status, api_data = TRADIER_API_OBJ.live_market_data_getter(symbol=symbol, start_date=start_date,
                                                            end_date=end_date,interval=interval)
         st, stock_details = load_company_details(symbol=symbol)
 
         if status and st:
-            proccessed_data = pd.DataFrame(api_data).dropna()
+            proccesed_data = serialize_data(pd.DataFrame(api_data).dropna())
+            # proccesed_data = pd.DataFrame(api_data).dropna()
             # pdb.set_trace()
-            print(proccessed_data)
-            operations = dict(stochastic=calculate_stochastic(data=proccessed_data),
-                              rsi=to_data_frame(operation_data=calculate_rsi(pd.DataFrame(api_data)),
-                                time_data=proccessed_data['time']),
-                              macd=calculate_macd(proccessed_data))
+            # print(proccessed_data)
+            operations = dict(stochastic=calculate_stochastic(data=proccesed_data),
+                              rsi=to_data_frame(operation_data=calculate_rsi(proccesed_data),
+                                time_data=proccesed_data['time']),
+                              macd=calculate_macd(proccesed_data),
+                              adr=to_data_frame(operation_data=calculate_adr(proccesed_data),
+                                                time_data=proccesed_data['time']))
 
             for key in operations:
                 status, error = store_data(stock_details,operations[key],key)
                 if not status:
                     return status, error
-
-            main_graph = generate_live_graph(proccessed_data, stock_details)
+            operations['olhcv'] = proccesed_data
+            main_graph = generate_live_graph(proccesed_data, stock_details)
             rsi_graph = generate_live_graph(stock_data=operations['rsi'],stock_details=stock_details, option="rsi")
             stochastic_graph = generate_live_graph(stock_data=operations['stochastic'],
                                                    stock_details=stock_details, option="stochastic")
             macd_graph = generate_live_graph(stock_data=operations['macd'],
                                              stock_details=stock_details,
                                        option='macd')
+            adr_graph = generate_live_graph(stock_data=operations['adr'],stock_details=stock_details,option='adr')
 
+            # graph = generate_definite_graph(data=operations,
+            #                                 stock_details=stock_details)
             result = {
+                # 'graph': render_graph(graph),
                 'graph': render_graph(main_graph),
                 'rsi_graph': render_graph(rsi_graph),
                 'stochastic_graph': render_graph(stochastic_graph),
-                'macd_graph': render_graph(macd_graph)
+                'macd_graph': render_graph(macd_graph),
+                'adr_graph': render_graph(adr_graph),
 
             }
         else:
