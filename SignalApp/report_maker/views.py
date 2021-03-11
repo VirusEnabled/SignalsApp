@@ -24,6 +24,7 @@ from .helpers import *
 from .forms import *
 from django.views.defaults import page_not_found, server_error
 from django.conf import settings
+from datetime import time
 
 def handler404(request, exception, template_name=None):
     template_name = 'includes/_error_page.html'
@@ -215,12 +216,12 @@ class Dashboard(TemplateView, LoginRequiredMixin):
                                                                     filters_data['stock'],
                                                                    start_date=start_year if not filters_data else\
                                                                        self.process_time(filters_data['start_date'],
-                                                                                         filters_data['start_time']),
+                                                                                         time(hour=7,minute=0,second=0)),
                                                                    end_date=today if not filters_data else \
                                                                        self.process_time(filters_data['end_date'],
-                                                                                         filters_data['end_time']),
-                                                                    interval='15min' if not filters_data else\
-                                                                            filters_data['interval']
+                                                                                         time(hour=21, minute=0,
+                                                                                              second=0)),
+                                                                    interval='15min'
                                                                    )
             if passed:
                 messages.success(request,"The graph was generated successfully!")

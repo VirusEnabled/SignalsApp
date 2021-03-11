@@ -174,6 +174,40 @@ class TradierDataHandler(object):
         finally:
             return flag, result
 
+    def get_market_calendar(self, year):
+        """
+        gets the stock market calendar for the given year
+        :param year: str
+        :return: tuple
+        """
+        endpoint = f"{self.api_root_endpoints['brokerage_rest']}markets/calendar"
+        flag = False
+        result = {}
+        final = []
+        try:
+            for month in range(1,13):
+                params = {'year': year,
+                          'month': f"{month}"
+                          }
+
+                response = req.get(endpoint, params=params, headers=self._headers)
+                # print(response.text)
+                if not response.json()['calendar']:
+                    result = {'error': f"The year: {year} was not capable of providing data, try a different one"}
+                else:
+                    flag = True
+                    result = response.json()['calendar']
+                    final.append(result['calendar'])
+            else:
+                result = final
+
+        except Exception as X:
+            flag = False
+            result = {'error': f"There was an error with the request: {X}, please try again later."}
+
+        finally:
+            return flag, result
+
 
     def get_historical_data(self, symbol: str, interval: str =None,
                             start_date: str =None,
