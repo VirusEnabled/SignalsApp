@@ -153,16 +153,18 @@ class TradierDataHandler(object):
         try:
             endpoint = f"{self.api_root_endpoints['brokerage_rest']}markets/timesales"
             params = {'symbol': symbol,
-                      'interval': '5min' if not interval else interval,
+                      'interval': '15min' if not interval else interval,
                       'start':start_date,
                       'end': end_date
                       }
             response = req.get(endpoint, params=params, headers=self._headers)
+            # import pdb; pdb.set_trace()
             if not response.json()['series']:
                 result = {'error': f"The data related to the symbol: {symbol} was not found, try a different one"}
             else:
                 flag = True
                 result = response.json()['series']['data']
+
         except json.JSONDecodeError as JS:
             flag = False
             result = {'error': f"There was an error with the request: {response.text}, please try again later."}

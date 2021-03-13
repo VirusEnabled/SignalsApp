@@ -40,12 +40,16 @@ class Stock(BaseModel):
 
 class HistoricalData(BaseModel):
     stock = models.ForeignKey(Stock,on_delete=models.CASCADE)
-    open = models.DecimalField(decimal_places=4, max_digits=4)
-    high = models.DecimalField(decimal_places=4, max_digits=4)
-    low = models.DecimalField(decimal_places=4, max_digits=4)
-    close = models.DecimalField(decimal_places=4, max_digits=4)
-    volume = models.IntegerField()
-    api_date = models.DateField()
+    open = models.FloatField()
+    high = models.FloatField()
+    low = models.FloatField()
+    close = models.FloatField(default=0.00)
+    macd = models.FloatField(default=0.00)
+    rsi = models.FloatField(default=0.00)
+    adr = models.FloatField(default=0.00)
+    stochastic = models.FloatField(default=0.00)
+    volume = models.FloatField(default=0.00)
+    api_date = models.DateTimeField()
 
 
     def __str__(self):
