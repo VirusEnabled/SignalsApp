@@ -521,8 +521,67 @@ def store_data(stock_details:dict,
         stock = Stock.objects.get(symbol=stock_details['Code']) if Stock.exists(stock_details['Code'])\
             else Stock.objects.create(symbol=stock_details['Code'],
                                       stock_details=json.dumps(stock_details))
+
         stock.indicatorcalculationdata_set.create(indicator=operation.capitalize(),
                                                   operation_data=operation_data.to_json())
+
+        stock.historicaldata_set.create()
+        status = True
+    except Exception as X:
+        error = f"There was an error with the request: {X}"
+        print("ERROR HERE", X)
+
+    finally:
+        return status, error
+
+def format_float_value(value):
+    """
+    removes the tuples
+    :param value:
+    :return: float
+    """
+    return round(value[0],4) if isinstance(value,tuple) else round(value,4)
+
+def store_full_data(stock_details:dict,
+               operation_data:dict) -> tuple:
+    """
+    saves the data in the models for further processing
+    :param stock_details: details about the stock to generate the graph for
+    :param operation_data: data frame to be exported to json
+    :param operation: type of operation, the available options are:
+    -adr
+    -stochastic
+    -rsi
+    -macd
+    :return:tuple
+    """
+    status, error = False, ""
+    try:
+        stock = Stock.objects.get(symbol=stock_details['Code']) if Stock.exists(stock_details['Code'])\
+            else Stock.objects.create(symbol=stock_details['Code'],
+                                      stock_details=json.dumps(stock_details))
+
+        for openz, high,timez, low,close, volume,rsi,stochastic,macd,adr in zip(operation_data['olhcv']['open'],
+                     operation_data['olhcv']['high'],
+                     operation_data['olhcv']['time'],
+                     operation_data['olhcv']['low'],
+                     operation_data['olhcv']['close'],
+                     operation_data['olhcv']['volume'],
+                     operation_data['rsi']['time'],
+                     operation_data['stochastic']['k_fast'],
+                     operation_data['macd']['macd'],
+                     operation_data['adr']['time']):
+
+            stock.historicaldata_set.create(open=format_float_value(openz),
+                                            high=format_float_value(high),
+                                            api_date=timez,
+                                            low=format_float_value(low),
+                                            close=format_float_value(close), volume=format_float_value(volume),
+                                            rsi=format_float_value(rsi), stochastic=format_float_value(stochastic),
+                                            macd=format_float_value(macd),
+                                            adr=format_float_value(adr),
+                                            )
+
         status = True
     except Exception as X:
         error = f"There was an error with the request: {X}"
@@ -542,7 +601,7 @@ def process_data(data):
     serialized = []
     last = 0
     for i in range(4,len(x),4):
-        serialized.append(sum(float(y) for y in x[last:i]))
+        serialized.append(sum(float(y) for y in x[last:i])/len(x[last:i]))
         # print(last,i,x[last:i],sum(x[last:i]))
         last += 4
         # pdb.set_trace()
@@ -575,7 +634,7 @@ def serialize_data(data: pd.DataFrame)->pd.DataFrame:
     final = pd.DataFrame(data={'open': process_data(data['open']), 'high': process_data(data['high']),
                            'low': process_data(data['low']), 'close': process_data(data['close']),
                            'volume': process_data(data['volume']),
-                           'time': serialize_time(data['time'])})
+                           'time': serialize_time(data['time'])}).dropna()
     return final
 
 
@@ -604,25 +663,28 @@ def generate_graph_calculations(symbol, start_date=None,
     try:
         status, api_data = TRADIER_API_OBJ.live_market_data_getter(symbol=symbol, start_date=start_date,
                                                            end_date=end_date,interval=interval)
+        # pdb.set_trace()
+
         st, stock_details = load_company_details(symbol=symbol)
 
         if status and st:
             proccesed_data = serialize_data(pd.DataFrame(api_data).dropna())
             # proccesed_data = pd.DataFrame(api_data).dropna()
-            # pdb.set_trace()
             # print(proccessed_data)
-            operations = dict(stochastic=calculate_stochastic(data=proccesed_data),
+            operations = dict(stochastic=calculate_stochastic(data=proccesed_data).dropna(),
                               rsi=to_data_frame(operation_data=calculate_rsi(proccesed_data),
-                                time_data=proccesed_data['time']),
-                              macd=calculate_macd(proccesed_data),
+                                time_data=proccesed_data['time']).dropna(),
+                              macd=calculate_macd(proccesed_data).dropna(),
                               adr=to_data_frame(operation_data=calculate_adr(proccesed_data),
-                                                time_data=proccesed_data['time']))
-
-            for key in operations:
-                status, error = store_data(stock_details,operations[key],key)
-                if not status:
-                    return status, error
+                                                time_data=proccesed_data['time']).dropna())
             operations['olhcv'] = proccesed_data
+            status, error = store_full_data(stock_details, operations)
+            if not status:
+                return status, error
+            # for key in operations:
+            #     status, error = store_data(stock_details,operations[key],key)
+            #     if not status:
+            #         return status, error
             main_graph = generate_live_graph(proccesed_data, stock_details)
             rsi_graph = generate_live_graph(stock_data=operations['rsi'],stock_details=stock_details, option="rsi")
             stochastic_graph = generate_live_graph(stock_data=operations['stochastic'],
