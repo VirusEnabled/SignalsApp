@@ -29,10 +29,6 @@ django-cors-headers
 djangorestframework-simplejwt
 filelock==3.0.12
 gunicorn==20.0.4
-hyperlink==20.0.1
-identify==1.5.11
-idna==2.10
-incremental==17.5.0
 ipython==7.19.0
 ipython-genutils==0.2.0
 jedi==0.17.2
