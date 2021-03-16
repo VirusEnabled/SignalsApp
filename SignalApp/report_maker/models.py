@@ -44,10 +44,8 @@ class HistoricalData(BaseModel):
     high = models.FloatField()
     low = models.FloatField()
     close = models.FloatField(default=0.00)
-    macd = models.FloatField(default=0.00)
     rsi = models.FloatField(default=0.00)
     adr = models.FloatField(default=0.00)
-    stochastic = models.FloatField(default=0.00)
     volume = models.FloatField(default=0.00)
     api_date = models.DateTimeField()
 
@@ -75,6 +73,19 @@ class HistoricalData(BaseModel):
     def v(self):
         return self.volume
 
+
+class StochasticIndicator(BaseModel):
+    historical_data = models.OneToOneField(HistoricalData, on_delete=models.CASCADE)
+    k_slow = models.FloatField(default=0.00)
+    k_fast = models.FloatField(default=0.00)
+    api_date = models.DateTimeField()
+
+
+class MACDIndicator(BaseModel):
+    historical_data = models.OneToOneField(HistoricalData, on_delete=models.CASCADE)
+    macd = models.FloatField(default=0.00)
+    signal = models.FloatField(default=0.00)
+    api_date = models.DateTimeField()
 
 
 class IndicatorCalculationData(BaseModel):
