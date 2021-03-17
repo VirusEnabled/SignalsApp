@@ -47,6 +47,10 @@ class HistoricalData(BaseModel):
     rsi = models.FloatField(default=0.00)
     adr = models.FloatField(default=0.00)
     volume = models.FloatField(default=0.00)
+    k_slow = models.FloatField(default=0.00)
+    k_fast = models.FloatField(default=0.00)
+    macd = models.FloatField(default=0.00)
+    signal = models.FloatField(default=0.00)
     api_date = models.DateTimeField()
 
 
