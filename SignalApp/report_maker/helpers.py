@@ -581,7 +581,9 @@ def store_full_data(stock_details:dict,
                                   operation_data['stochastic'].iloc[i]):
 
                 # historical =
-                stock.historicaldata_set.create(open=operation_data['olhcv'].iloc[i]['open'],
+                HistoricalData.objects.update_or_create(
+                                                stock=stock,
+                                                open=operation_data['olhcv'].iloc[i]['open'],
                                                 high=operation_data['olhcv'].iloc[i]['high'],
                                                 low=operation_data['olhcv'].iloc[i]['low'],
                                                 close=operation_data['olhcv'].iloc[i]['close'],
