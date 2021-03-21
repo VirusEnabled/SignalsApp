@@ -197,7 +197,7 @@ def generate_live_graph(stock_data:pd.DataFrame, stock_details, option: str='olh
         graph.update_xaxes(
             rangeslider_visible=True,
             rangebreaks=[
-                dict(bounds=["sat", "sun"]),
+                dict(bounds=["sat", "mon"]),
                 dict(bounds=[22, 7], pattern="hour"),
                 dict(values=get_year_weekends()+["2020-12-25", "2021-01-01"])  # hide holidays (Christmas and New Year's, etc)
             ]
@@ -205,7 +205,7 @@ def generate_live_graph(stock_data:pd.DataFrame, stock_details, option: str='olh
         # graph.update_xaxes(rangebreaks=[dict(values=dt_breaks)])
 
     elif option == 'rsi':
-        graph.add_trace(p_go.Scatter(y=df['time'], x=df['operation_data']),
+        graph.add_trace(p_go.Scatter(x=df['time'], y=df['operation_data']),
                         secondary_y=True)
         graph.update_traces(name='RSI',showlegend=True ,selector=dict(type='scatter'))
         graph.update_layout(height=300)
@@ -244,7 +244,7 @@ def generate_live_graph(stock_data:pd.DataFrame, stock_details, option: str='olh
         graph.update_layout(height=300)
 
     elif option == 'adr':
-        graph.add_trace(p_go.Scatter(y=df['time'], x=df['operation_data'],
+        graph.add_trace(p_go.Scatter(x=df['time'], y=df['operation_data'],
                                      name='adr'),
                         secondary_y=True)
         graph.update_traces(name='adr', showlegend=True, selector=dict(type='scatter',
@@ -427,6 +427,7 @@ def calculate_rsi(data: pd.DataFrame) -> pd.Series:
     ema_down = down.ewm(com=13, adjust=False).mean()
     rs = ema_up / ema_down
     rsi = 100.0 - (100.0 / (1.0 + rs))
+    # rsi = rsi.dropna()
     rsi = rsi.dropna().clip(lower=1)
     # print(rsi)
     return rsi
@@ -498,8 +499,8 @@ def to_data_frame(operation_data, time_data):
     :return: dataframe object
     """
     dataframe = pd.DataFrame()
-    dataframe['time'] = operation_data
-    dataframe['operation_data'] = time_data
+    dataframe['time'] = time_data
+    dataframe['operation_data'] = operation_data
     return dataframe
 
 def store_data(stock_details:dict,
@@ -542,6 +543,91 @@ def format_float_value(value):
     """
     return round(value[0],4) if isinstance(value,tuple) else round(value,4)
 
+def evaluate_integrity(olhcv,rsi,adr,macd,stochastic):
+    """
+    validates that the given data in the given date
+    is concurrent in it
+    :param olhcv:
+    :param rsi:
+    :param adr:
+    :param macd:
+    :param stochastic:
+    :return: bool
+    """
+    return olhcv['time'] == macd['time']==rsi['time']==adr['time']==stochastic['time']
+
+def format_date(datetime_str):
+    """
+    turns the datetime_str to isoformat str
+    :param datetime_str: str
+    :return: str
+    """
+    dx = datetime_str.split(' ')
+    datex,hour = dx[0].split('/'), dx[1].split(':')
+    return  datetime(year=int(f"20{datex[-1]}"),month=int(datex[1]),
+                     day=int(datex[0]),hour=int(hour[0]), minute=int(hour[1])).isoformat()
+
+def format_dt(dataframe):
+    """
+    generates a new dataframe based on the given
+    key. this is segregate the data based on the given symbol
+    :param dataframe: pandas dataframe
+    :param key: str: the symbol to query
+    :return: dataframe
+    """
+    resultant = dataframe.to_dict()
+    for key,value in resultant['quote_datetime'].items():
+        resultant['quote_datetime'][key] = format_date(value)
+    resultant['time'] = resultant['quote_datetime']
+    resultant['volume'] =  resultant['trade_volume']
+    del resultant['quote_datetime']
+    del resultant['trade_volume']
+
+    return pd.DataFrame(resultant)
+
+
+def process_file_data(csvfile, delimiter=";"):
+    """
+    saves the csv file data, formats it
+    and stores it in the db.
+    :param csvfile:  path of the csv file
+    :return: bool
+    """
+    file = open(csvfile, 'r')
+    dataframe = pd.read_csv(file, delimiter=delimiter).dropna()
+    companies = set(dataframe['underlying_symbol'])
+    groups = dataframe.groupby('underlying_symbol')
+    dataframes = [
+        {'data':format_dt(groups.get_group(symbol)),
+         'stock_details': {'Code': symbol}
+         }
+        for symbol in companies
+    ]
+    flag,result = False, None
+    for dframe in dataframes:
+        proccesed_data = dframe['data']
+        operations = dict(stochastic=calculate_stochastic(data=proccesed_data),
+                          rsi=to_data_frame(operation_data=calculate_rsi(proccesed_data),
+                                            time_data=proccesed_data['time']),
+                          macd=calculate_macd(proccesed_data),
+                          adr=to_data_frame(operation_data=calculate_adr(proccesed_data),
+                                            time_data=proccesed_data['time']).dropna())
+        operations['olhcv'] = proccesed_data
+        operations['rsi'] = operations['rsi'].fillna(0)
+        operations['stochastic'] = operations['stochastic'].fillna(0)
+        print([(k, len(obj)) for k, obj in operations.items()])
+        # pdb.set_trace()
+        status, error = store_full_data(dframe['stock_details'], operations)
+        if not status:
+            result = error
+            break
+    else:
+        flag = True
+        result = 'Success'
+
+    return flag, result
+
+
 def store_full_data(stock_details:dict,
                operation_data:dict) -> tuple:
     """
@@ -561,26 +647,38 @@ def store_full_data(stock_details:dict,
             else Stock.objects.create(symbol=stock_details['Code'],
                                       stock_details=json.dumps(stock_details))
 
-        for openz, high,timez, low,close, volume,rsi,stochastic,macd,adr in zip(operation_data['olhcv']['open'],
-                     operation_data['olhcv']['high'],
-                     operation_data['olhcv']['time'],
-                     operation_data['olhcv']['low'],
-                     operation_data['olhcv']['close'],
-                     operation_data['olhcv']['volume'],
-                     operation_data['rsi']['time'],
-                     operation_data['stochastic']['k_fast'],
-                     operation_data['macd']['macd'],
-                     operation_data['adr']['time']):
+        for i in range(len(operation_data['olhcv'])):
+            if evaluate_integrity(operation_data['olhcv'].iloc[i],operation_data['rsi'].iloc[i],
+                                  operation_data['adr'].iloc[i],operation_data['macd'].iloc[i],
+                                  operation_data['stochastic'].iloc[i]):
 
-            stock.historicaldata_set.create(open=format_float_value(openz),
-                                            high=format_float_value(high),
-                                            api_date=timez,
-                                            low=format_float_value(low),
-                                            close=format_float_value(close), volume=format_float_value(volume),
-                                            rsi=format_float_value(rsi), stochastic=format_float_value(stochastic),
-                                            macd=format_float_value(macd),
-                                            adr=format_float_value(adr),
-                                            )
+                # historical =
+                HistoricalData.objects.update_or_create(
+                                                stock=stock,
+                                                open=operation_data['olhcv'].iloc[i]['open'],
+                                                high=operation_data['olhcv'].iloc[i]['high'],
+                                                low=operation_data['olhcv'].iloc[i]['low'],
+                                                close=operation_data['olhcv'].iloc[i]['close'],
+                                                volume=operation_data['olhcv'].iloc[i]['volume'],
+                                                api_date=operation_data['olhcv'].iloc[i]['time'],
+                                                rsi=operation_data['rsi'].iloc[i]['operation_data'],
+                                                adr=operation_data['adr'].iloc[i]['operation_data'],
+                                                k_slow=operation_data['stochastic'].iloc[i]['k_slow'],
+                                                k_fast=operation_data['stochastic'].iloc[i]['k_fast'],
+                                                macd=operation_data['macd'].iloc[i]['macd'],
+                                                signal=operation_data['macd'].iloc[i]['signal'],
+                                                )
+                # StochasticIndicator.objects.create(historical_data=historical,
+                #                                    k_slow=operation_data['stochastic'].iloc[i]['k_slow'],
+                #                                    k_fast=operation_data['stochastic'].iloc[i]['k_fast'],
+                #                                    api_date=operation_data['stochastic'].iloc[i]['time']
+                #                                    )
+                # MACDIndicator.objects.create(
+                #     historical_data=historical,
+                #     macd=operation_data['macd'].iloc[i]['macd'],
+                #     signal=operation_data['macd'].iloc[i]['signal'],
+                #     api_date=operation_data['macd'].iloc[i]['time']
+                # )
 
         status = True
     except Exception as X:
@@ -671,13 +769,17 @@ def generate_graph_calculations(symbol, start_date=None,
             proccesed_data = serialize_data(pd.DataFrame(api_data).dropna())
             # proccesed_data = pd.DataFrame(api_data).dropna()
             # print(proccessed_data)
-            operations = dict(stochastic=calculate_stochastic(data=proccesed_data).dropna(),
+            operations = dict(stochastic=calculate_stochastic(data=proccesed_data),
                               rsi=to_data_frame(operation_data=calculate_rsi(proccesed_data),
-                                time_data=proccesed_data['time']).dropna(),
-                              macd=calculate_macd(proccesed_data).dropna(),
+                                time_data=proccesed_data['time']),
+                              macd=calculate_macd(proccesed_data),
                               adr=to_data_frame(operation_data=calculate_adr(proccesed_data),
                                                 time_data=proccesed_data['time']).dropna())
             operations['olhcv'] = proccesed_data
+            operations['rsi'] = operations['rsi'].fillna(0)
+            operations['stochastic'] = operations['stochastic'].fillna(0)
+            print([(k, len(obj)) for k, obj in operations.items()])
+            # pdb.set_trace()
             status, error = store_full_data(stock_details, operations)
             if not status:
                 return status, error
