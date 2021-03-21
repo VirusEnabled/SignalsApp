@@ -556,6 +556,78 @@ def evaluate_integrity(olhcv,rsi,adr,macd,stochastic):
     """
     return olhcv['time'] == macd['time']==rsi['time']==adr['time']==stochastic['time']
 
+def format_date(datetime_str):
+    """
+    turns the datetime_str to isoformat str
+    :param datetime_str: str
+    :return: str
+    """
+    dx = datetime_str.split(' ')
+    datex,hour = dx[0].split('/'), dx[1].split(':')
+    return  datetime(year=int(f"20{datex[-1]}"),month=int(datex[1]),
+                     day=int(datex[0]),hour=int(hour[0]), minute=int(hour[1])).isoformat()
+
+def format_dt(dataframe):
+    """
+    generates a new dataframe based on the given
+    key. this is segregate the data based on the given symbol
+    :param dataframe: pandas dataframe
+    :param key: str: the symbol to query
+    :return: dataframe
+    """
+    resultant = dataframe.to_dict()
+    for key,value in resultant['quote_datetime'].items():
+        resultant['quote_datetime'][key] = format_date(value)
+    resultant['time'] = resultant['quote_datetime']
+    resultant['volume'] =  resultant['trade_volume']
+    del resultant['quote_datetime']
+    del resultant['trade_volume']
+
+    return pd.DataFrame(resultant)
+
+
+def process_file_data(csvfile, delimiter=";"):
+    """
+    saves the csv file data, formats it
+    and stores it in the db.
+    :param csvfile:  path of the csv file
+    :return: bool
+    """
+    file = open(csvfile, 'r')
+    dataframe = pd.read_csv(file, delimiter=delimiter).dropna()
+    companies = set(dataframe['underlying_symbol'])
+    groups = dataframe.groupby('underlying_symbol')
+    dataframes = [
+        {'data':format_dt(groups.get_group(symbol)),
+         'stock_details': {'Code': symbol}
+         }
+        for symbol in companies
+    ]
+    flag,result = False, None
+    for dframe in dataframes:
+        proccesed_data = dframe['data']
+        operations = dict(stochastic=calculate_stochastic(data=proccesed_data),
+                          rsi=to_data_frame(operation_data=calculate_rsi(proccesed_data),
+                                            time_data=proccesed_data['time']),
+                          macd=calculate_macd(proccesed_data),
+                          adr=to_data_frame(operation_data=calculate_adr(proccesed_data),
+                                            time_data=proccesed_data['time']).dropna())
+        operations['olhcv'] = proccesed_data
+        operations['rsi'] = operations['rsi'].fillna(0)
+        operations['stochastic'] = operations['stochastic'].fillna(0)
+        print([(k, len(obj)) for k, obj in operations.items()])
+        # pdb.set_trace()
+        status, error = store_full_data(dframe['stock_details'], operations)
+        if not status:
+            result = error
+            break
+    else:
+        flag = True
+        result = 'Success'
+
+    return flag, result
+
+
 def store_full_data(stock_details:dict,
                operation_data:dict) -> tuple:
     """
