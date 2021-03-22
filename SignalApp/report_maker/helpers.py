@@ -562,12 +562,21 @@ def format_date(datetime_str):
     :param datetime_str: str
     :return: str
     """
-    dx = datetime_str.split(' ')
-    datex, hour = dx[0].split('/'), dx[1].split(':')
-    return  datetime(year=int(f"{'20'+datex[-1] if len(datex[-1]) < 4 else datex[-1]}"), month=int(datex[1]),
-                     day=int(datex[0]), hour=int(hour[0]), minute=int(hour[1])).isoformat()
+    result = ""
+    if '/' in datetime_str:
+        dx = datetime_str.split(' ')
+        datex, hour = dx[0].split('/'), dx[1].split(':')
+        result= datetime(year=int(f"{'20'+datex[-1] if len(datex[-1]) < 4 else datex[-1]}"),
+                        month=int(datex[1]),day=int(datex[0]),
+                        hour=int(hour[0])-1, minute=int(hour[1])).isoformat()
+    else:
+        stamp = datetime.fromisoformat(datetime_str)
+        result = datetime(year=stamp.year,
+                 month=stamp.month, day=stamp.day,
+                 hour=stamp.hour-1, minute=stamp.minute).isoformat()
+    return result
 
-def format_dt(dataframe):
+def format_dt(dataframe: pd.DataFrame):
     """
     generates a new dataframe based on the given
     key. this is segregate the data based on the given symbol
@@ -576,8 +585,27 @@ def format_dt(dataframe):
     :return: dataframe
     """
     resultant = dataframe.to_dict()
-    for key,value in resultant['quote_datetime'].items():
-        resultant['quote_datetime'][key] = format_date(value) if '/' in value else value
+    # print(resultant)
+
+    for key in dataframe['underlying_symbol'].index:
+        if (resultant['open'][key] <= 0 and
+            resultant['high'][key] <= 0 and
+            resultant['low'][key] <= 0 and
+            resultant['close'][key] <= 0):
+            del resultant['open'][key]
+            del resultant['high'][key]
+            del resultant['low'][key]
+            del resultant['close'][key]
+            del resultant['quote_datetime'][key]
+            del resultant['vwap'][key]
+            del resultant['ask'][key]
+            del resultant['bid'][key]
+            del resultant['trade_volume'][key]
+            del resultant['underlying_symbol'][key]
+
+
+    for key, value in resultant['quote_datetime'].items():
+        resultant['quote_datetime'][key] = format_date(value)
     resultant['time'] = resultant['quote_datetime']
     resultant['volume'] =  resultant['trade_volume']
     del resultant['quote_datetime']
