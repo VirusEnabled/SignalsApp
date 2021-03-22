@@ -31,3 +31,12 @@ sudo apt install -y build-essential libffi-dev libssl-dev \
 - **Install the libraries from the requirements.txt**
 
 ---
+### Custom Commandline Commands:
+
+As of now we're only having *load_stock_by_file*, probably we're going to have more in the future
+to run it you need to run the following script where csvfile is the path of the file you're looking for loading:
+```
+python3.8 manage.py load_stocks_by_file /path/to/your/csv/file/ --delimiter ';'
+```
+**the *--delimiter* option is optional in case you're using a different delimiter, you can specify it but by default it's a semicolon (;)** 
+---
