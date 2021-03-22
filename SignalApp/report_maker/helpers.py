@@ -577,7 +577,7 @@ def format_dt(dataframe):
     """
     resultant = dataframe.to_dict()
     for key,value in resultant['quote_datetime'].items():
-        resultant['quote_datetime'][key] = format_date(value)
+        resultant['quote_datetime'][key] = format_date(value) if '/' in value else value
     resultant['time'] = resultant['quote_datetime']
     resultant['volume'] =  resultant['trade_volume']
     del resultant['quote_datetime']
