@@ -593,38 +593,41 @@ def process_file_data(csvfile, delimiter=";"):
     :param csvfile:  path of the csv file
     :return: bool
     """
-    file = open(csvfile, 'r')
-    dataframe = pd.read_csv(file, delimiter=delimiter).dropna()
-    companies = set(dataframe['underlying_symbol'])
-    groups = dataframe.groupby('underlying_symbol')
-    dataframes = [
-        {'data':format_dt(groups.get_group(symbol)),
-         'stock_details': {'Code': symbol}
-         }
-        for symbol in companies
-    ]
-    flag,result = False, None
-    for dframe in dataframes:
-        proccesed_data = dframe['data']
-        operations = dict(stochastic=calculate_stochastic(data=proccesed_data),
-                          rsi=to_data_frame(operation_data=calculate_rsi(proccesed_data),
-                                            time_data=proccesed_data['time']),
-                          macd=calculate_macd(proccesed_data),
-                          adr=to_data_frame(operation_data=calculate_adr(proccesed_data),
-                                            time_data=proccesed_data['time']).dropna())
-        operations['olhcv'] = proccesed_data
-        operations['rsi'] = operations['rsi'].fillna(0)
-        operations['stochastic'] = operations['stochastic'].fillna(0)
-        print([(k, len(obj)) for k, obj in operations.items()])
-        # pdb.set_trace()
-        status, error = store_full_data(dframe['stock_details'], operations)
-        if not status:
-            result = error
-            break
-    else:
-        flag = True
-        result = 'Success'
-
+    try:
+        file = open(csvfile, 'r')
+        dataframe = pd.read_csv(file, delimiter=delimiter).dropna()
+        companies = set(dataframe['underlying_symbol'])
+        groups = dataframe.groupby('underlying_symbol')
+        dataframes = [
+            {'data':format_dt(groups.get_group(symbol)),
+             'stock_details': {'Code': symbol}
+             }
+            for symbol in companies
+        ]
+        flag,result = False, None
+        for dframe in dataframes:
+            proccesed_data = dframe['data']
+            operations = dict(stochastic=calculate_stochastic(data=proccesed_data),
+                              rsi=to_data_frame(operation_data=calculate_rsi(proccesed_data),
+                                                time_data=proccesed_data['time']),
+                              macd=calculate_macd(proccesed_data),
+                              adr=to_data_frame(operation_data=calculate_adr(proccesed_data),
+                                                time_data=proccesed_data['time']).dropna())
+            operations['olhcv'] = proccesed_data
+            operations['rsi'] = operations['rsi'].fillna(0)
+            operations['stochastic'] = operations['stochastic'].fillna(0)
+            print([(k, len(obj)) for k, obj in operations.items()])
+            # pdb.set_trace()
+            status, error = store_full_data(dframe['stock_details'], operations)
+            if not status:
+                result = error
+                break
+        else:
+            flag = True
+            result = 'Success'
+    except Exception as EX:
+        flag= False
+        result = f"ERROR: {EX}"
     return flag, result
 
 

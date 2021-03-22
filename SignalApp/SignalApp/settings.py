@@ -50,12 +50,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'report_maker',
     'rest_framework',
     'crispy_forms',
     'django_celery_results',
     'django_celery_beat',
     'rest_framework.authtoken',
-    'report_maker',
 ]
 
 REST_FRAMEWORK = {
