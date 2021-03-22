@@ -564,8 +564,8 @@ def format_date(datetime_str):
     """
     dx = datetime_str.split(' ')
     datex, hour = dx[0].split('/'), dx[1].split(':')
-    return  datetime(year=int(f"{datex[-1]}"),month=int(datex[1]),
-                     day=int(datex[0]),hour=int(hour[0]), minute=int(hour[1])).isoformat()
+    return  datetime(year=int(f"{'20'+datex[-1] if len(datex[-1]) < 4 else datex[-1]}"), month=int(datex[1]),
+                     day=int(datex[0]), hour=int(hour[0]), minute=int(hour[1])).isoformat()
 
 def format_dt(dataframe):
     """
