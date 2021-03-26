@@ -62,10 +62,10 @@ class HistoricalData(BaseModel):
     k_fast = models.FloatField(default=0.00)
     macd = models.FloatField(default=0.00)
     signal = models.FloatField(default=0.00)
-    f_stoch = models.CharField(max_length=20, choices=choices, default=choices[-1])
-    f_rsi = models.CharField(max_length=20, choices=choices, default=choices[-1])
-    f_macd = models.CharField(max_length=20, choices=choices, default=choices[-1])
-    bullet = models.CharField(max_length=20, choices=choices_bullet, default=choices_bullet[-1])
+    f_stoch = models.CharField(max_length=20, default=choices[-1])
+    f_rsi = models.CharField(max_length=20, default=choices[-1])
+    f_macd = models.CharField(max_length=20, default=choices[-1])
+    bullet = models.CharField(max_length=20, default=choices_bullet[-1])
     api_date = models.DateTimeField()
 
 
