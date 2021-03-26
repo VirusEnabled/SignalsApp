@@ -37,7 +37,7 @@ class TradierDataHandler(object):
         """
         return {
             'Accept':"application/json",
-            'Authorization': f"Bearer {self.config['broker_token']}",
+            'Authorization': f"Bearer {self.config['twelve_api_key']}",
             'Content-Type':'application/json'
         }
 
