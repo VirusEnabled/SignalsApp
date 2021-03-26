@@ -151,7 +151,7 @@ class Dashboard(TemplateView, LoginRequiredMixin):
     permission_denied_message = "In order to access to this part, you should be logged in"
 
     http_method_names = ['get', 'post']
-    extra_context = {'available_stocks': TRADIER_API_OBJ.load_markets()[:10]}
+    extra_context = {'available_stocks': DATA_API_OBJ.load_markets()[:10]}
 
     def get(self, request, *args, **kwargs):
         if request.user.is_authenticated:
@@ -221,7 +221,7 @@ class Dashboard(TemplateView, LoginRequiredMixin):
                                                                        self.process_time(filters_data['end_date'],
                                                                                          time(hour=21, minute=0,
                                                                                               second=0)),
-                                                                    interval='15min'
+                                                                    interval='1h'
                                                                    )
             if passed:
                 messages.success(request,"The graph was generated successfully!")
@@ -233,12 +233,17 @@ class Dashboard(TemplateView, LoginRequiredMixin):
                 return render(request, self.template_name, context=context)
 
             else:
-                messages.error(request,
-                               f"There's was a problem generating the graph: {graphs['error']}, try again.")
+                messages.error(request, f"There's was a problem generating the graph: {graphs['error']}, try again.")
+                print(graphs)
+                context = self.get_context_data()
+                return render(request, self.template_name,context=context)
+
 
         else:
             messages.error(request, f"There's was a problem with your request, "
                                     f"please try again.{filters.errors if not filters.is_valid() else ''}")
+            print(filters.errors)
+
         return self.get(request)
 
 
@@ -269,7 +274,7 @@ def generate_graphs(request):
     passed, graph = get_stock_historical_candlestick_graph(symbol=data['selected_stock'],
                                                            start_date=data['start_date'],
                                                            end_date=data['end_date'],
-                                                           interval=data['selected_interval'].lower())
+                                                           interval='1h')
     if passed:
         s = status.HTTP_200_OK
         response['message'] = "the graphs has been generated successfully"
