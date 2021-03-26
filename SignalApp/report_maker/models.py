@@ -12,22 +12,61 @@ class BaseModel(models.Model):
 
 
 class Stock(BaseModel):
+    choices = [('LOW', 'LOW'),
+               ('MED', 'MEDIUM'),
+               ('HIGH', 'HIGH')]
     symbol = models.CharField(max_length=100)
-
+    stock_details = models.TextField(default="{}")
+    priority = models.CharField(max_length=20, choices=choices, default=choices[-1])
 
     def __str__(self):
         return f"<{self.symbol}>"
 
+    @staticmethod
+    def exists(symbol):
+        """
+        verifies if the given symbol is in the db
+        :param symbol: str
+        :return: bool
+        """
+        result = False
+        try:
+            stock = Stock.objects.get(symbol=symbol)
+            result = True
+        except models.ObjectDoesNotExist:
+            pass
+        finally:
+            return result
+
 
 
 class HistoricalData(BaseModel):
+    choices = [('HIGH', 'HIGH'),
+               ('LOW','LOW'),
+               ('EMPTY', 'EMPTY')]
+
+    choices_bullet = [('START', 'START'),
+                      ('STOP','STOP'),
+                      ('PAUSE','PAUSE'),
+                      ('EMPTY', 'EMPTY'),]
+
     stock = models.ForeignKey(Stock,on_delete=models.CASCADE)
-    open = models.DecimalField(decimal_places=4, max_digits=4)
-    high = models.DecimalField(decimal_places=4, max_digits=4)
-    low = models.DecimalField(decimal_places=4, max_digits=4)
-    close = models.DecimalField(decimal_places=4, max_digits=4)
-    volume = models.IntegerField()
-    api_date = models.DateField()
+    open = models.FloatField(default=0.00)
+    high = models.FloatField(default=0.00)
+    low = models.FloatField(default=0.00)
+    close = models.FloatField(default=0.00)
+    rsi = models.FloatField(default=0.00)
+    adr = models.FloatField(default=0.00)
+    volume = models.FloatField(default=0.00)
+    k_slow = models.FloatField(default=0.00)
+    k_fast = models.FloatField(default=0.00)
+    macd = models.FloatField(default=0.00)
+    signal = models.FloatField(default=0.00)
+    f_stoch = models.CharField(max_length=20, default=choices[-1])
+    f_rsi = models.CharField(max_length=20, default=choices[-1])
+    f_macd = models.CharField(max_length=20, default=choices[-1])
+    bullet = models.CharField(max_length=20, default=choices_bullet[-1])
+    api_date = models.DateTimeField()
 
 
     def __str__(self):
@@ -53,5 +92,30 @@ class HistoricalData(BaseModel):
     def v(self):
         return self.volume
 
+
+class StochasticIndicator(BaseModel):
+    historical_data = models.OneToOneField(HistoricalData, on_delete=models.CASCADE)
+    k_slow = models.FloatField(default=0.00)
+    k_fast = models.FloatField(default=0.00)
+    api_date = models.DateTimeField()
+
+
+class MACDIndicator(BaseModel):
+    historical_data = models.OneToOneField(HistoricalData, on_delete=models.CASCADE)
+    macd = models.FloatField(default=0.00)
+    signal = models.FloatField(default=0.00)
+    api_date = models.DateTimeField()
+
+
+class IndicatorCalculationData(BaseModel):
+    indicators = [('STOCHASTIC','STOCHASTIC'),('RSI',"RSI"),
+                  ('MACD','MACD'),('ADR','ADR'),]
+    stock = models.ForeignKey(Stock, on_delete=models.CASCADE)
+    indicator = models.CharField(choices=indicators,max_length=100)
+    operation_data = models.TextField(default="{}")
+
+
+    def __str__(self):
+        return f"<{self.symbol}>"
 
 

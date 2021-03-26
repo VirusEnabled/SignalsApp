@@ -41,7 +41,7 @@ class StockGenericOperation(Form):
 
 
 
-class StockOperationForm(Form):
+class HistoricalStockOperationForm(Form):
     stock = StockChoiceField()
     start_date = fields.DateField()
     end_date = fields.DateField()
@@ -53,6 +53,30 @@ class StockOperationForm(Form):
         super().__init__(*args,**kwargs)
         for field in self.fields.keys():
             self.fields[field].widget.attrs['class']='form-control'
-        self.fields['start_date'].widget = widgets.Input({'class':'form-control', 'type': 'date'})
-        self.fields['end_date'].widget = widgets.Input({'class':'form-control', 'type': 'date'})
+        self.fields['start_date'].widget = widgets.DateInput({'class':'form-control', 'type': 'date'})
+        self.fields['end_date'].widget = widgets.DateInput({'class':'form-control', 'type': 'date'})
+
+
+
+class StockOperationForm(Form):
+    shift_options = [('tick','tick'),
+                                  ('1min','1min'),
+                                  ('5min','5min'),
+                                  ('15min', '15min'),
+                                  ]
+    stock = StockChoiceField()
+    start_date = fields.DateField()
+    # start_time = fields.TimeField()
+    end_date = fields.DateField()
+    # end_time = fields.TimeField()
+    # interval=ChoiceField(choices=shift_options)
+
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        for field in self.fields.keys():
+            self.fields[field].widget.attrs['class']='form-control'
+        self.fields['start_date'].widget = widgets.DateInput({'class':'form-control', 'type': 'date'})
+        self.fields['end_date'].widget = widgets.DateInput({'class':'form-control', 'type': 'date'})
+        # self.fields['start_time'].widget = widgets.DateInput({'class': 'form-control', 'type': 'time'})
+        # self.fields['end_time'].widget = widgets.DateInput({'class': 'form-control', 'type': 'time'})
 

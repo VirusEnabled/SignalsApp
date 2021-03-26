@@ -131,3 +131,49 @@ class RedisHandler(object):
 
 		finally:
 			return flag, result
+
+
+	def save_graph_refresh_time(self, user: object, symbol: str, refresh_time: str) -> tuple:
+		"""
+		saves the historical data as a whole rather than
+		one by one
+		:param user: Userobject, normally the logged user
+		:param symbol: str: the symbol's data
+		:param refresh_time: str: date and timestamp of the operation
+		from the symbol provided
+		:return: tutple
+		"""
+		flag = False
+		result = "There was an error with your request"
+		try:
+			key =f"last_graph_refresh_time_{user.username}_for_{symbol}"
+			self.client.set(key, json.dumps(refresh_time))
+			flag = True
+			result = f"Success{ json.dumps(refresh_time)}"
+		except Exception as X:
+			result+=f": {X}"
+
+		finally:
+			return flag, result
+
+
+
+	def get_graph_refresh_time(self, user: object, symbol: str) -> tuple:
+		"""
+		retrieves the last time the graph was updated data belonging to the existing user
+		:param user: Userobject, normally the logged user
+		:param symbol: str: the symbol's data
+		from the symbol provided
+		:return: tutple
+		"""
+		flag = False
+		result = "There was an error with your request"
+		try:
+			key =f"last_graph_refresh_time_{user.username}_for_{symbol}"
+			flag, result = self.get_item(key)
+
+		except Exception as X:
+			result+=f": {X}"
+
+		finally:
+			return flag, result
