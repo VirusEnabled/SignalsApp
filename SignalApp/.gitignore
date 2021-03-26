@@ -1,3 +1,16 @@
+# Folders
+venv
+# migrations
+__pycache__
+logs
 
-#Databases
-.sqlite3
+# DB
+*.sqlite3
+*.log
+
+# Editors.
+.idea
+.vscode
+
+
+

@@ -12,9 +12,12 @@ class BaseModel(models.Model):
 
 
 class Stock(BaseModel):
+    choices = [('LOW', 'LOW'),
+               ('MED', 'MEDIUM'),
+               ('HIGH', 'HIGH')]
     symbol = models.CharField(max_length=100)
     stock_details = models.TextField(default="{}")
-
+    priority = models.CharField(max_length=20, choices=choices, default=choices[-1])
 
     def __str__(self):
         return f"<{self.symbol}>"
@@ -28,9 +31,8 @@ class Stock(BaseModel):
         """
         result = False
         try:
-            stock =Stock.objects.get(symbol=symbol)
+            stock = Stock.objects.get(symbol=symbol)
             result = True
-
         except models.ObjectDoesNotExist:
             pass
         finally:
@@ -39,10 +41,19 @@ class Stock(BaseModel):
 
 
 class HistoricalData(BaseModel):
+    choices = [('HIGH', 'HIGH'),
+               ('LOW','LOW'),
+               ('EMPTY', 'EMPTY')]
+
+    choices_bullet = [('START', 'START'),
+                      ('STOP','STOP'),
+                      ('PAUSE','PAUSE'),
+                      ('EMPTY', 'EMPTY'),]
+
     stock = models.ForeignKey(Stock,on_delete=models.CASCADE)
-    open = models.FloatField()
-    high = models.FloatField()
-    low = models.FloatField()
+    open = models.FloatField(default=0.00)
+    high = models.FloatField(default=0.00)
+    low = models.FloatField(default=0.00)
     close = models.FloatField(default=0.00)
     rsi = models.FloatField(default=0.00)
     adr = models.FloatField(default=0.00)
@@ -51,6 +62,10 @@ class HistoricalData(BaseModel):
     k_fast = models.FloatField(default=0.00)
     macd = models.FloatField(default=0.00)
     signal = models.FloatField(default=0.00)
+    f_stoch = models.CharField(max_length=20, default=choices[-1])
+    f_rsi = models.CharField(max_length=20, default=choices[-1])
+    f_macd = models.CharField(max_length=20, default=choices[-1])
+    bullet = models.CharField(max_length=20, default=choices_bullet[-1])
     api_date = models.DateTimeField()
 
 

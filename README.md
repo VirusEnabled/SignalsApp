@@ -38,5 +38,5 @@ to run it you need to run the following script where csvfile is the path of the 
 ```
 python3.8 manage.py load_stocks_by_file /path/to/your/csv/file/ --delimiter ';'
 ```
-**the *--delimiter* option is optional in case you're using a different delimiter, you can specify it but by default it's a semicolon (;)** 
+**the *--delimiter* option is optional in case you're using a different delimiter, you can specify it but by default it's a semicolon (;)**
 ---
