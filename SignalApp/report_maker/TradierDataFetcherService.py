@@ -9,19 +9,21 @@ class TradierDataHandler(object):
 
     def __init__(self):
         self.config = {
-            'sandbox_credentials':{
+            'sandbox_credentials': {
                 'account_number':"VA67273733",
                 'access_token': "rpxricq2EY5WbhosGLM8tmP8lTPW"
             },
-            'broker_token':"qglG9G87oKaSYgDm2TWtzkiFEtKu",
-            'historical_data_api_eod': "60285a53993948.89589431"
+            'broker_token': "qglG9G87oKaSYgDm2TWtzkiFEtKu",
+            'historical_data_api_eod': "60285a53993948.89589431",
+            'twelve_api_key': "eb61c42448454dc5b6b6f59dfe6d8072",
 
         }
         self.api_root_endpoints = {
-            'brokerage_rest':"https://api.tradier.com/v1/",
+            'brokerage_rest': "https://api.tradier.com/v1/",
             'brokerage_stream': "https://stream.tradier.com/v1/",
-            'sandbox':"https://sandbox.tradier.com/v1/",
-            'eod_historical_data': "https://eodhistoricaldata.com/api/"
+            'sandbox': "https://sandbox.tradier.com/v1/",
+            'eod_historical_data': "https://eodhistoricaldata.com/api/",
+            'twelve_api': "https://api.twelvedata.com/",
 
         }
 
@@ -137,7 +139,7 @@ class TradierDataHandler(object):
 
     def live_market_data_getter(self, symbol:str , interval:str =None,
                                 start_date: datetime=datetime.today()-timedelta(days=365),
-                                end_date: datetime=datetime.today())->tuple:
+                                end_date: datetime=datetime.today()) -> tuple:
         """
         get the data coming from the markets
         this data should be live data meaning

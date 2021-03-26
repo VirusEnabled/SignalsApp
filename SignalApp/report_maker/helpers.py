@@ -592,16 +592,10 @@ def format_dt(dataframe: pd.DataFrame):
             resultant['high'][key] <= 0 and
             resultant['low'][key] <= 0 and
             resultant['close'][key] <= 0):
-            del resultant['open'][key]
-            del resultant['high'][key]
-            del resultant['low'][key]
-            del resultant['close'][key]
-            del resultant['quote_datetime'][key]
-            del resultant['vwap'][key]
-            del resultant['ask'][key]
-            del resultant['bid'][key]
-            del resultant['trade_volume'][key]
-            del resultant['underlying_symbol'][key]
+            for category in ['open','close','low','high',
+                             'quote_datetime','vwap','ask',
+                             'bid','trade_volume','underlying_symbol']:
+                del resultant[category][key]
 
 
     for key, value in resultant['quote_datetime'].items():
@@ -632,7 +626,7 @@ def process_file_data(csvfile, delimiter=";"):
              }
             for symbol in companies
         ]
-        flag,result = False, None
+        flag, result = False, None
         for dframe in dataframes:
             proccesed_data = dframe['data']
             operations = dict(stochastic=calculate_stochastic(data=proccesed_data),
@@ -683,21 +677,31 @@ def store_full_data(stock_details:dict,
                                   operation_data['adr'].iloc[i],operation_data['macd'].iloc[i],
                                   operation_data['stochastic'].iloc[i]):
 
-                # historical =
+                f_stoch = 'HIGH' if operation_data['stochastic'].iloc[i]['k_fast'] > 20.00 else 'LOW'
+                f_rsi = 'HIGH' if operation_data['rsi'].iloc[i]['operation_data'] > 70.00 else 'LOW'
+                f_macd = 'HIGH' if operation_data['macd'].iloc[i]['macd'] > operation_data['macd'].iloc[i]['signal'] \
+                    else 'LOW'
+                bullet = 'START' if f_stoch == f_rsi == f_macd == 'HIGH' else 'STOP' \
+                    if f_stoch == f_rsi == f_macd == 'LOW' else 'PAUSE'
+
                 HistoricalData.objects.update_or_create(
-                                                stock=stock,
-                                                open=operation_data['olhcv'].iloc[i]['open'],
-                                                high=operation_data['olhcv'].iloc[i]['high'],
-                                                low=operation_data['olhcv'].iloc[i]['low'],
-                                                close=operation_data['olhcv'].iloc[i]['close'],
-                                                volume=operation_data['olhcv'].iloc[i]['volume'],
-                                                api_date=operation_data['olhcv'].iloc[i]['time'],
-                                                rsi=operation_data['rsi'].iloc[i]['operation_data'],
-                                                adr=operation_data['adr'].iloc[i]['operation_data'],
-                                                k_slow=operation_data['stochastic'].iloc[i]['k_slow'],
-                                                k_fast=operation_data['stochastic'].iloc[i]['k_fast'],
-                                                macd=operation_data['macd'].iloc[i]['macd'],
-                                                signal=operation_data['macd'].iloc[i]['signal'],
+                                                stock = stock,
+                                                open = operation_data['olhcv'].iloc[i]['open'],
+                                                high = operation_data['olhcv'].iloc[i]['high'],
+                                                low = operation_data['olhcv'].iloc[i]['low'],
+                                                close = operation_data['olhcv'].iloc[i]['close'],
+                                                volume = operation_data['olhcv'].iloc[i]['volume'],
+                                                api_date = operation_data['olhcv'].iloc[i]['time'],
+                                                rsi = operation_data['rsi'].iloc[i]['operation_data'],
+                                                adr = operation_data['adr'].iloc[i]['operation_data'],
+                                                k_slow = operation_data['stochastic'].iloc[i]['k_slow'],
+                                                k_fast = operation_data['stochastic'].iloc[i]['k_fast'],
+                                                macd = operation_data['macd'].iloc[i]['macd'],
+                                                signal = operation_data['macd'].iloc[i]['signal'],
+                                                f_stoch=f_stoch,
+                                                f_rsi = f_rsi,
+                                                f_macd = f_macd,
+                                                bullet= bullet
                                                 )
                 # StochasticIndicator.objects.create(historical_data=historical,
                 #                                    k_slow=operation_data['stochastic'].iloc[i]['k_slow'],
