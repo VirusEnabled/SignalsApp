@@ -42,6 +42,7 @@ class RedisHandler(object):
 
 		except Exception as X:
 			result = f"{result}: {X}"
+			flag = False
 
 		finally:
 			return flag, result
@@ -141,6 +142,9 @@ class RedisHandler(object):
 		:param symbol: str: the symbol's data
 		:param refresh_time: str: date and timestamp of the operation
 		from the symbol provided
+		the modification is the following: if the item didn't exist, we return a False and None as the last
+		time it was executed, else we return true and the last time it was saved before updating it.
+		with this we'll avoid repeating the date and all of the filter
 		:return: tutple
 		"""
 		flag = False
@@ -177,3 +181,77 @@ class RedisHandler(object):
 
 		finally:
 			return flag, result
+
+
+	def refresh_last_fetched_time(self, new_refresh_time):
+		"""
+		takes the given params and verifies if it was already saved, if so it updates the value
+		and return the last update, else it returns the given time and false as it didn't exist.
+		:param new_refresh_time: str: date and timestamp of the operation
+		from the symbol provided
+		:return: tuple
+		"""
+		flag = False
+		result = {}
+		try:
+			key = f"last_refresh_time_celery"
+			flag, response = self.load_value(key, new_refresh_time)
+			if not flag:
+				raise Exception(response)
+			else:
+				result['result'] = response
+
+		except Exception as X:
+			result['error'] = f"There was an error: {X}"
+
+		finally:
+			return flag, result
+
+	def get_last_fetched_time(self) -> tuple:
+		"""
+		return the last update, else it returns the given time and false as it didn't exist.
+
+		the modification is the following: if the item didn't exist, we return a False and None as the last
+		time it was executed, else we return true and the last time it was saved before updating it.
+		with this we'll avoid repeating the date and all of the filter
+		:return: tuple
+		"""
+		flag = False
+		result = {}
+		try:
+			key =f"last_refresh_time_celery"
+			flag, item = self.get_item(key)
+
+			if not flag and "doesn't exist" not in item:
+				raise Exception(item)
+
+			elif not flag and "doesn't exist" in item:
+				result['last_refresh_time_celery'] = None
+
+			else:
+				result['last_refresh_time_celery'] = item
+
+		except Exception as X:
+			result['error'] += f"There was an error with your request: {X}"
+
+		finally:
+			return flag, result
+
+
+	def load_market_list(self, markets):
+		"""
+		saves the market list in the
+		redis caching strategy
+		:param markets: list
+		:return: dict
+		"""
+		return self.load_value('market_list', markets)
+
+
+
+	def get_market_list(self):
+		"""
+		retrieves the market list from redis if exist
+		:return: tuple
+		"""
+		return self.get_item('market_list')

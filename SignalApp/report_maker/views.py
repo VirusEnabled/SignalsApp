@@ -181,7 +181,8 @@ class Dashboard(TemplateView, LoginRequiredMixin):
         self.historical_form = HistoricalStockOperationForm(request.POST)
         return self.form, self.filters_form, self.historical_form
 
-    # might need to fix it when we go live
+    # need to be able to only fetch the data from the last record so that I know which dates to use
+    # and don't load the whole historical data but rather the one fetched.
     def post(self, request):
         """
         covers the post request for the dashboard
@@ -199,7 +200,11 @@ class Dashboard(TemplateView, LoginRequiredMixin):
             # a_year_back = (datetime.today() - timedelta(days=365)).strftime("%Y-%m-%d %H:%m")
             start_year =(datetime(current_date.year,1,
                                   current_date.day)+timedelta(days=2)).strftime("%Y-%m-%d %H:%m")
-            saved, value = settings.REDIS_OBJ.save_graph_refresh_time(user=request.user, symbol=data['stock'], refresh_time=today)
+
+            # need to change this to a different method.
+            saved, value = settings.REDIS_OBJ.save_graph_refresh_time(user=request.user, symbol=data['stock'],
+                                                                      refresh_time=today)
+
             if not saved:
                 messages.error(request, f"There's was a problem generating the graph: "
                                         f"We couldn't save the last refresh time because: {value}")

@@ -24,6 +24,7 @@ class APIDataHandler(object):
             'twelve_api': "https://api.twelvedata.com/",
 
         }
+        self.save_market_list()
 
     @property
     def _headers(self) -> dict:
@@ -105,7 +106,7 @@ class APIDataHandler(object):
         for now just USA as requested by the client.
         :return: list
         """
-        return [market for market in self.load_markets()['data']]
+        return self.load_markets()
 
 
     def live_market_data_getter(self, symbol:str , interval:str =None,
@@ -231,11 +232,11 @@ class APIDataHandler(object):
             return flag, result
 
     def get_all_historical_data_info(self, start_date: date =None,
-                            end_date: date =None) -> tuple:
+                            end_date: date =None):
         """
         loads all of the historical data
         for all stocks based on the dates given
-        :return: tuple
+        :yields: dict
         """
         flag =  False
         historical_data = None
@@ -243,16 +244,19 @@ class APIDataHandler(object):
 
         try:
             available_symbols = [obj['symbol'] for obj in markets]
-            historical_data = [
-                self.get_historical_data(symbol, start_date=start_date, end_date=end_date)
-                for symbol in available_symbols
-            ]
-            flag = True
+            for symbol in available_symbols:
+                yield self.get_historical_data(symbol, start_date=start_date, end_date=end_date)
 
         except Exception as X:
             historical_data = f"There was an error{X}"
+            yield historical_data
 
-        finally:
-            return flag, historical_data
-
-
+    def save_market_list(self):
+        """
+        saves the market list in the
+        caching mechanism
+        :return: None
+        """
+        status, result = settings.REDIS_OBJ.load_market_list(self.markets)
+        if not status:
+            raise Exception(result)
