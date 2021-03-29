@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import pytz
 from.DataFetcherService import  *
 # import statistics as stats
 import plotly.graph_objects as p_go
@@ -10,6 +11,7 @@ import pdb
 import json
 from .models import *
 import calendar
+
 
 
 DATA_API_OBJ = APIDataHandler()
@@ -853,3 +855,117 @@ def generate_graph_calculations(symbol, start_date=None,
     finally:
         return status, result
 
+def get_current_ny_time(date_time: datetime=datetime.now()):
+    """
+    gets the current new york time
+    this works for time needed to fetch the data
+    :return: str
+    """
+    eastern_time = pytz.timezone('US/Eastern')
+    final_time = eastern_time.localize(date_time)
+    final_time = final_time.astimezone(eastern_time)
+    reducible = int(''.join(z for z in final_time.strftime("%z").split('0') if z!='' and z!='-'))
+    return (final_time.astimezone(eastern_time)- timedelta(hours=reducible)).strftime("%Y-%m-%d %H:%M")
+
+def generate_time_intervals_for_api_query():
+    """
+    generates the start_date and end_date
+    for the API requests executed with celery
+
+    the first part needed is to determine:
+    1- need to get the last time the query was executed
+    if there's any then we use that as a start date, else:
+    we need to query 1 year from today. and the end_date will
+    be the datetime snapshot of the day during the execution (datetime.now())
+
+    the snapshot will be saved on redis and then once called again, we'll use
+    the snapshot as a start_date and the end_date will be start_date + 1 hour
+
+    # right now missing these evaluations:
+        if the snapshot ends in a 19:30 then the end_date should be 1+ day
+         and starts at 8:30
+
+         if the snapshot day ends in friday then the end_date should start on monday at
+         8:30pm
+
+         if the snapshot it's on the limit time: current date-19:30, and the current date is the same
+         as the snapshot, the end_date is the same snapshot.
+
+     so basically the snapshot works closely with the current date the server has or the
+     current datetime there is in new york
+    :return: dict
+    """
+    result = {}
+    try:
+        today = get_current_ny_time()
+        start_date = get_current_ny_time(datetime.today()-timedelta(days=365))
+        end_date = today
+        status, result = settings.REDIS_OBJ.get_last_fetched_time()
+        if not status and 'error' in result.keys():
+            raise Exception(result['error'])
+        elif not status:
+            if not result['last_refresh_time_celery']:
+                result['start_date'] = datetime.fromisoformat(start_date)
+        else:
+            result['start_date'] = datetime.fromisoformat(result['last_refresh_time_celery'])
+        result['end_date'] = datetime.fromisoformat(end_date)
+        result['status'] = True
+
+    except Exception as E:
+        result['error'] = f"There was an Error: {E}"
+        result['status'] = False
+    return result
+
+
+def fetch_markets_data(symbols:list, start_date: datetime,
+                       end_date: datetime, interval: str='1hour') -> dict:
+    """
+    fetches the data for all of the markets in the list based on the needed and then
+    stores the data in the data base as needed for further processing
+    :param symbols: list of symbols required for the execution
+    :param start_date: datetime: when to start fetching from
+    :param end_date: last time to stop fetching from
+    :param interval: interval to get the data from :
+    for now 1hour but it supports daily, monthly, 1min, 15min, etc.
+    :return:dict
+    """
+    result = {'error': "",
+              'status': False
+              }
+    try:
+        status, error = settings.REDIS_OBJ.refresh_last_fetched_time(datetime.now().isoformat())
+        if not status
+            raise Exception(error['error'])
+
+        for symbol in symbols:
+            status, api_data = DATA_API_OBJ.live_market_data_getter(symbol=symbol, start_date=start_date,
+                                                                    end_date=end_date, interval=interval)
+
+            if status:
+                stock_details = api_data['stock_details']
+                # proccesed_data = serialize_data(pd.DataFrame(api_data['data']).dropna())
+                proccesed_data = pd.DataFrame(api_data['data']).dropna()
+                operations = dict(stochastic=calculate_stochastic(data=proccesed_data),
+                                  rsi=to_data_frame(operation_data=calculate_rsi(proccesed_data),
+                                                    time_data=proccesed_data['datetime']),
+                                  macd=calculate_macd(proccesed_data),
+                                  adr=to_data_frame(operation_data=calculate_adr(proccesed_data),
+                                                    time_data=proccesed_data['datetime']).dropna())
+
+                operations['olhcv'] = proccesed_data
+                operations['rsi'] = operations['rsi'].fillna(0)
+                operations['stochastic'] = operations['stochastic'].fillna(0)
+                status, error = store_full_data(stock_details, operations)
+                if not status:
+                    result['status'] = status
+                    result['error'] =error
+
+            else:
+                result['status'] = False
+                result['error'] = api_data
+
+    except Exception as X:
+        result['error'] = f"{X}"
+
+    finally:
+        return result
