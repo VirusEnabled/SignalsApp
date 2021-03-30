@@ -8,7 +8,7 @@ CELERY_BIN="/home/ubuntu/signal_app/signaler/bin/celery"
 CELERY_APP="mysite.tasks:app"
 
 # Where to chdir at start.
-CELERYD_CHDIR="/home/ubuntu/signal_app/SignalsApp/SignalsApp"
+CELERYD_CHDIR="/home/ubuntu/signal_app/SignalsApp/SignalApp"
 
 # Extra command-line arguments to the worker
 CELERYD_OPTS="--time-limit=30000 --concurrency=8"
