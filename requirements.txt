@@ -62,3 +62,4 @@ tradier
 statistics
 yfinance
 dash==1.19.0
+pytz
