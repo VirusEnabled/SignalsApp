@@ -4,7 +4,7 @@ import re
 import requests as r
 from django.db.models.query import QuerySet
 from django.forms.fields import ChoiceField
-from .TradierDataFetcherService import TradierDataHandler
+from .DataFetcherService import APIDataHandler
 
 class LoginForm(Form):
     email = fields.EmailField()
@@ -25,8 +25,8 @@ class LoginForm(Form):
 class StockChoiceField(ChoiceField):
 
     def __init__(self):
-        choices = [(f'{market["Code"]}', f'{market["Code"]}'.upper())
-                   for market in TradierDataHandler.load_markets()[:5000]]
+        choices = [(f'{market["symbol"]}', f'{market["symbol"]}'.upper())
+                   for market in APIDataHandler.load_markets()]
         super().__init__(choices=choices)
 
 

@@ -1,5 +1,6 @@
-from datetime import datetime, timedelta, time
-from.TradierDataFetcherService import  *
+from datetime import datetime, timedelta
+import pytz
+from.DataFetcherService import  *
 # import statistics as stats
 import plotly.graph_objects as p_go
 from plotly.offline import iplot
@@ -8,12 +9,12 @@ from plotly.subplots import make_subplots
 import pandas as pd
 import pdb
 import json
-import time
 from .models import *
 import calendar
 
 
-TRADIER_API_OBJ = TradierDataHandler()
+
+DATA_API_OBJ = APIDataHandler()
 
 def generate_candle_sticks_graph(stock_historical_data, stock_details):
     """
@@ -35,7 +36,7 @@ def generate_candle_sticks_graph(stock_historical_data, stock_details):
                   secondary_y=False)
 
     fig_candlestick.update_layout(
-        title=f'{stock_details["Name"]} Market',
+        title=f'{stock_details["symbol"]} Market',
         yaxis_title=f'{stock_details["Code"]} Stock',
         legend=dict(
             yanchor="top",
@@ -60,18 +61,18 @@ def generate_candle_sticks_graph(stock_historical_data, stock_details):
 #     """
 #
 #
-#     status, calendar = TRADIER_API_OBJ.get_market_calendar("2020")
+#     status, calendar = DATA_API_OBJ.get_market_calendar("2020")
 #     # pdb.set_trace()
 #     graph = make_subplots(rows=5, cols=1)
 #     for option in data.keys():
 #         df = data[option]
 #
 #         if option == 'olhcv':
-#             inner_graph = p_go.Candlestick(x=df['time'],
+#             inner_graph = p_go.Candlestick(x=df['datetime'],
 #                                            open=df['open'], high=df['high'],
 #                                            low=df['low'], close=df['close'])
 #             graph.append_trace(inner_graph, 1, 1)
-#             # graph.add_trace(p_go.Bar(x=df['time'], y=df['volume']),
+#             # graph.add_trace(p_go.Bar(x=df['datetime'], y=df['volume']),
 #             #                 secondary_y=False)
 #             graph.update_traces(name='OHLC', selector=dict(type='candlestick'))
 #             # graph.update_traces(name='Volume', selector=dict(type='bar'), opacity=0.70)
@@ -89,18 +90,18 @@ def generate_candle_sticks_graph(stock_historical_data, stock_details):
 #
 #
 #         elif option == 'rsi':
-#             graph.append_trace(p_go.Scatter(y=df['time'], x=df['operation_data']), 2, 1)
+#             graph.append_trace(p_go.Scatter(y=df['datetime'], x=df['operation_data']), 2, 1)
 #             graph.update_traces(name='RSI', showlegend=True, selector=dict(type='scatter'))
 #             # graph.update_layout(height=300)
 #
 #         elif option == 'stochastic':
-#             graph.append_trace(p_go.Scatter(x=df['time'], y=df['k_fast'],
+#             graph.append_trace(p_go.Scatter(x=df['datetime'], y=df['k_fast'],
 #                                          y0=df['d_slow'],
 #                                          name='k_fast'), 3, 1)
 #             graph.update_traces(name='K_FAST', showlegend=True, selector=dict(type='scatter',
 #                                                                               name='k_fast'), line_color='green')
 #
-#             graph.add_trace(p_go.Scatter(x=df['time'], y=df['k_slow'],
+#             graph.add_trace(p_go.Scatter(x=df['datetime'], y=df['k_slow'],
 #                                          name='k_slow'))
 #             graph.update_traces(name='K_SLOW', showlegend=True, selector=dict(type='scatter',
 #                                                                               name='k_slow'), line_color='magenta')
@@ -108,12 +109,12 @@ def generate_candle_sticks_graph(stock_historical_data, stock_details):
 #
 #
 #         elif option == 'macd':
-#             graph.append_trace(p_go.Scatter(x=df['time'], y=df['macd'],
+#             graph.append_trace(p_go.Scatter(x=df['datetime'], y=df['macd'],
 #                                          name='MACD'), 4, 1)
 #             graph.update_traces(name='MACD', showlegend=True, selector=dict(type='scatter',
 #                                                                             name='MACD'),
 #                                 line_color='red')
-#             graph.add_trace(p_go.Scatter(x=df['time'], y=df['signal'],
+#             graph.add_trace(p_go.Scatter(x=df['datetime'], y=df['signal'],
 #                                          name='Signal Line'))
 #
 #             graph.update_traces(name='Signal Line', showlegend=True,
@@ -123,7 +124,7 @@ def generate_candle_sticks_graph(stock_historical_data, stock_details):
 #             # graph.update_layout(height=300)
 #
 #         elif option == 'adr':
-#             graph.append_trace(p_go.Scatter(y=df['time'], x=df['operation_data'],
+#             graph.append_trace(p_go.Scatter(y=df['datetime'], x=df['operation_data'],
 #                                          name='adr'), 5, 1)
 #             graph.update_traces(name='adr', showlegend=True, selector=dict(type='scatter',
 #                                                                            name='adr'),
@@ -132,7 +133,7 @@ def generate_candle_sticks_graph(stock_historical_data, stock_details):
 #             # graph.update_layout(height=300)
 #
 #     graph.update_layout(
-#         title=f'{stock_details["Name"]} Market Graphs',
+#         title=f'{stock_details["symbol"]} Market Graphs',
 #         yaxis_title=f'{stock_details["Code"]} Stock',
 #         legend=dict(
 #             yanchor="top",
@@ -177,18 +178,18 @@ def generate_live_graph(stock_data:pd.DataFrame, stock_details, option: str='olh
     -macd
     :return: plotly graph
     """
-    status, calendar = TRADIER_API_OBJ.get_market_calendar("2020")
+    # status, calendar = DATA_API_OBJ.get_market_calendar("2020")
     # pdb.set_trace()
     df = stock_data
     graph =  make_subplots(specs=[[{"secondary_y": True}]])
 
     if option == 'olhcv':
-        inner_graph = p_go.Candlestick(x=df['time'],
+        inner_graph = p_go.Candlestick(x=df['datetime'],
                                        open=df['open'], high=df['high'],
                                        low=df['low'], close=df['close'])
         graph.add_trace(inner_graph,
                         secondary_y=True)
-        # graph.add_trace(p_go.Bar(x=df['time'], y=df['volume']),
+        # graph.add_trace(p_go.Bar(x=df['datetime'], y=df['volume']),
         #                 secondary_y=False)
         graph.update_traces(name='OHLC', selector=dict(type='candlestick'))
         # graph.update_traces(name='Volume', selector=dict(type='bar'), opacity=0.70)
@@ -205,20 +206,20 @@ def generate_live_graph(stock_data:pd.DataFrame, stock_details, option: str='olh
         # graph.update_xaxes(rangebreaks=[dict(values=dt_breaks)])
 
     elif option == 'rsi':
-        graph.add_trace(p_go.Scatter(x=df['time'], y=df['operation_data']),
+        graph.add_trace(p_go.Scatter(x=df['datetime'], y=df['operation_data']),
                         secondary_y=True)
         graph.update_traces(name='RSI',showlegend=True ,selector=dict(type='scatter'))
         graph.update_layout(height=300)
 
     elif option == 'stochastic':
-        graph.add_trace(p_go.Scatter(x=df['time'], y=df['k_fast'],
+        graph.add_trace(p_go.Scatter(x=df['datetime'], y=df['k_fast'],
                                      y0=df['d_slow'],
                                      name='k_fast'),
                         secondary_y=True)
         graph.update_traces(name='K_FAST',showlegend=True ,selector=dict(type='scatter',
                                                                          name='k_fast'),line_color='green')
 
-        graph.add_trace(p_go.Scatter(x=df['time'], y=df['k_slow'],
+        graph.add_trace(p_go.Scatter(x=df['datetime'], y=df['k_slow'],
                                      name='k_slow'),
                         secondary_y=True)
         graph.update_traces(name='K_SLOW', showlegend=True, selector=dict(type='scatter',
@@ -227,13 +228,13 @@ def generate_live_graph(stock_data:pd.DataFrame, stock_details, option: str='olh
 
 
     elif option == 'macd':
-        graph.add_trace(p_go.Scatter(x=df['time'], y=df['macd'],
+        graph.add_trace(p_go.Scatter(x=df['datetime'], y=df['macd'],
                                      name='MACD'),
                         secondary_y=True)
         graph.update_traces(name='MACD', showlegend=True, selector=dict(type='scatter',
                                                                           name='MACD'),
                             line_color='red')
-        graph.add_trace(p_go.Scatter(x=df['time'], y=df['signal'],
+        graph.add_trace(p_go.Scatter(x=df['datetime'], y=df['signal'],
                                      name='Signal Line'),
                         secondary_y=True)
 
@@ -244,7 +245,7 @@ def generate_live_graph(stock_data:pd.DataFrame, stock_details, option: str='olh
         graph.update_layout(height=300)
 
     elif option == 'adr':
-        graph.add_trace(p_go.Scatter(x=df['time'], y=df['operation_data'],
+        graph.add_trace(p_go.Scatter(x=df['datetime'], y=df['operation_data'],
                                      name='adr'),
                         secondary_y=True)
         graph.update_traces(name='adr', showlegend=True, selector=dict(type='scatter',
@@ -255,8 +256,8 @@ def generate_live_graph(stock_data:pd.DataFrame, stock_details, option: str='olh
 
 
     graph.update_layout(
-        title=f'{stock_details["Name"]} Market: {option.capitalize()} graph',
-        yaxis_title=f'{stock_details["Code"]} Stock',
+        title=f'{stock_details["symbol"]} Market: {option.capitalize()} graph',
+        yaxis_title=f'{stock_details["symbol"]} Stock',
         legend=dict(
             yanchor="top",
             y=0.999,
@@ -297,7 +298,7 @@ def update_graph(graph, new_values, option):
             status = True
 
         elif option == 'stochastic':
-            graph.add_trace(p_go.Scatter(x=new_values['time'], y=new_values['d_fast']),
+            graph.add_trace(p_go.Scatter(x=new_values['datetime'], y=new_values['d_fast']),
                             secondary_y=False)
             # pdb.set_trace()
             graph.update_traces(name=option.title(), selector=dict(type='scatter'))
@@ -330,7 +331,7 @@ def load_company_details(symbol):
     """
     result = {'error':'The stock was not found, try a different one.'}
     flag = False
-    for record in TRADIER_API_OBJ.load_markets():
+    for record in DATA_API_OBJ.load_markets():
         if record['Code'] == symbol:
             result = record
             flag = True
@@ -349,9 +350,9 @@ def get_stock_historical_candlestick_graph(symbol, start_date=None,
     :return: tuple
     """
     result = None
-    status, historical = TRADIER_API_OBJ.get_historical_data(symbol=symbol, interval=interval,
-                                                             start_date=start_date,
-                                                             end_date=end_date)
+    status, historical = DATA_API_OBJ.get_historical_data(symbol=symbol, interval=interval,
+                                                          start_date=start_date,
+                                                          end_date=end_date)
 
     # stock data comming from there.
     st, stock_details = load_company_details(symbol=symbol)
@@ -388,7 +389,7 @@ def calculate_macd(data: pd.DataFrame) -> pd.DataFrame:
     ema26 = data['close'].ewm(span=26, adjust=False).mean()
     macd = ema12 - ema26
     signal = macd.ewm(span=9, adjust=False).mean()
-    result = pd.DataFrame(data={'macd': macd, 'signal':signal,'time':data['time']})
+    result = pd.DataFrame(data={'macd': macd, 'signal':signal,'datetime':data['datetime']})
     return result
 
 
@@ -495,11 +496,11 @@ def to_data_frame(operation_data, time_data):
     """
     creates a dataframe to plot the results of the calculations
     :param operation_data: data used to calculate the indicators
-    :param time_data: time elapsed
+    :param time_data: datetime elapsed
     :return: dataframe object
     """
     dataframe = pd.DataFrame()
-    dataframe['time'] = time_data
+    dataframe['datetime'] = time_data
     dataframe['operation_data'] = operation_data
     return dataframe
 
@@ -519,8 +520,8 @@ def store_data(stock_details:dict,
     """
     status, error = False, ""
     try:
-        stock = Stock.objects.get(symbol=stock_details['Code']) if Stock.exists(stock_details['Code'])\
-            else Stock.objects.create(symbol=stock_details['Code'],
+        stock = Stock.objects.get(symbol=stock_details['symbol']) if Stock.exists(stock_details['symbol'])\
+            else Stock.objects.create(symbol=stock_details['symbol'],
                                       stock_details=json.dumps(stock_details))
 
         stock.indicatorcalculationdata_set.create(indicator=operation.capitalize(),
@@ -554,7 +555,7 @@ def evaluate_integrity(olhcv,rsi,adr,macd,stochastic):
     :param stochastic:
     :return: bool
     """
-    return olhcv['time'] == macd['time']==rsi['time']==adr['time']==stochastic['time']
+    return olhcv['datetime'] == macd['datetime']==rsi['datetime']==adr['datetime']==stochastic['datetime']
 
 def format_date(datetime_str):
     """
@@ -600,7 +601,7 @@ def format_dt(dataframe: pd.DataFrame):
 
     for key, value in resultant['quote_datetime'].items():
         resultant['quote_datetime'][key] = format_date(value)
-    resultant['time'] = resultant['quote_datetime']
+    resultant['datetime'] = resultant['quote_datetime']
     resultant['volume'] =  resultant['trade_volume']
     del resultant['quote_datetime']
     del resultant['trade_volume']
@@ -631,10 +632,10 @@ def process_file_data(csvfile, delimiter=";"):
             proccesed_data = dframe['data']
             operations = dict(stochastic=calculate_stochastic(data=proccesed_data),
                               rsi=to_data_frame(operation_data=calculate_rsi(proccesed_data),
-                                                time_data=proccesed_data['time']),
+                                                time_data=proccesed_data['datetime']),
                               macd=calculate_macd(proccesed_data),
                               adr=to_data_frame(operation_data=calculate_adr(proccesed_data),
-                                                time_data=proccesed_data['time']).dropna())
+                                                time_data=proccesed_data['datetime']).dropna())
             operations['olhcv'] = proccesed_data
             operations['rsi'] = operations['rsi'].fillna(0)
             operations['stochastic'] = operations['stochastic'].fillna(0)
@@ -668,8 +669,8 @@ def store_full_data(stock_details:dict,
     """
     status, error = False, ""
     try:
-        stock = Stock.objects.get(symbol=stock_details['Code']) if Stock.exists(stock_details['Code'])\
-            else Stock.objects.create(symbol=stock_details['Code'],
+        stock = Stock.objects.get(symbol=stock_details['symbol']) if Stock.exists(stock_details['symbol'])\
+            else Stock.objects.create(symbol=stock_details['symbol'],
                                       stock_details=json.dumps(stock_details))
 
         for i in range(len(operation_data['olhcv'])):
@@ -691,7 +692,7 @@ def store_full_data(stock_details:dict,
                                                 low = operation_data['olhcv'].iloc[i]['low'],
                                                 close = operation_data['olhcv'].iloc[i]['close'],
                                                 volume = operation_data['olhcv'].iloc[i]['volume'],
-                                                api_date = operation_data['olhcv'].iloc[i]['time'],
+                                                api_date = operation_data['olhcv'].iloc[i]['datetime'],
                                                 rsi = operation_data['rsi'].iloc[i]['operation_data'],
                                                 adr = operation_data['adr'].iloc[i]['operation_data'],
                                                 k_slow = operation_data['stochastic'].iloc[i]['k_slow'],
@@ -706,13 +707,13 @@ def store_full_data(stock_details:dict,
                 # StochasticIndicator.objects.create(historical_data=historical,
                 #                                    k_slow=operation_data['stochastic'].iloc[i]['k_slow'],
                 #                                    k_fast=operation_data['stochastic'].iloc[i]['k_fast'],
-                #                                    api_date=operation_data['stochastic'].iloc[i]['time']
+                #                                    api_date=operation_data['stochastic'].iloc[i]['datetime']
                 #                                    )
                 # MACDIndicator.objects.create(
                 #     historical_data=historical,
                 #     macd=operation_data['macd'].iloc[i]['macd'],
                 #     signal=operation_data['macd'].iloc[i]['signal'],
-                #     api_date=operation_data['macd'].iloc[i]['time']
+                #     api_date=operation_data['macd'].iloc[i]['datetime']
                 # )
 
         status = True
@@ -738,13 +739,13 @@ def process_data(data):
         # print(last,i,x[last:i],sum(x[last:i]))
         last += 4
         # pdb.set_trace()
-        # time.sleep(20)
+        # datetime.sleep(20)
     return pd.Series(data={k:v for k, v in enumerate(serialized)})
 
 
 def serialize_time(dtime):
     """
-    serializes the time, basically extracts the hours
+    serializes the datetime, basically extracts the hours
     :param dtime: Series
     :return:Series
     """
@@ -767,7 +768,7 @@ def serialize_data(data: pd.DataFrame)->pd.DataFrame:
     final = pd.DataFrame(data={'open': process_data(data['open']), 'high': process_data(data['high']),
                            'low': process_data(data['low']), 'close': process_data(data['close']),
                            'volume': process_data(data['volume']),
-                           'time': serialize_time(data['time'])}).dropna()
+                           'datetime': serialize_time(data['datetime'])}).dropna()
     return final
 
 
@@ -789,27 +790,27 @@ def generate_graph_calculations(symbol, start_date=None,
     :param symbol: str: market
     :param start_date: date interval to parse from
     :param end_date: date interval to parse to
-    :param interval : str : Interval of time per timesale. One of: tick, 1min, 5min, 15min
+    :param interval : str : Interval of datetime per timesale. One of: tick, 1min, 5min, 15min
     :return: tuple
     """
     status, result = False, {'error':""}
     try:
-        status, api_data = TRADIER_API_OBJ.live_market_data_getter(symbol=symbol, start_date=start_date,
-                                                           end_date=end_date,interval=interval)
+        status, api_data = DATA_API_OBJ.live_market_data_getter(symbol=symbol, start_date=start_date,
+                                                                end_date=end_date, interval=interval)
         # pdb.set_trace()
 
-        st, stock_details = load_company_details(symbol=symbol)
 
-        if status and st:
-            proccesed_data = serialize_data(pd.DataFrame(api_data).dropna())
-            # proccesed_data = pd.DataFrame(api_data).dropna()
+        if status:
+            stock_details = api_data['stock_details']
+            # proccesed_data = serialize_data(pd.DataFrame(api_data['data']).dropna())
+            proccesed_data = pd.DataFrame(api_data['data']).dropna()
             # print(proccessed_data)
             operations = dict(stochastic=calculate_stochastic(data=proccesed_data),
                               rsi=to_data_frame(operation_data=calculate_rsi(proccesed_data),
-                                time_data=proccesed_data['time']),
+                                time_data=proccesed_data['datetime']),
                               macd=calculate_macd(proccesed_data),
                               adr=to_data_frame(operation_data=calculate_adr(proccesed_data),
-                                                time_data=proccesed_data['time']).dropna())
+                                                time_data=proccesed_data['datetime']).dropna())
             operations['olhcv'] = proccesed_data
             operations['rsi'] = operations['rsi'].fillna(0)
             operations['stochastic'] = operations['stochastic'].fillna(0)
@@ -844,13 +845,127 @@ def generate_graph_calculations(symbol, start_date=None,
             }
         else:
             status = False
-            result = api_data if not status else stock_details
+            result = api_data
 
     except Exception as X:
         result['error'] = f"There has been an error with your request: {X}"
         status = False
-        print(status,result,"EXITING IT")
+        print(status, result, "EXITING IT")
 
     finally:
         return status, result
 
+def get_current_ny_time(date_time: datetime=datetime.now()):
+    """
+    gets the current new york time
+    this works for time needed to fetch the data
+    :return: str
+    """
+    eastern_time = pytz.timezone('US/Eastern')
+    final_time = eastern_time.localize(date_time)
+    final_time = final_time.astimezone(eastern_time)
+    reducible = int(''.join(z for z in final_time.strftime("%z").split('0') if z!='' and z!='-'))
+    return (final_time.astimezone(eastern_time)- timedelta(hours=reducible)).strftime("%Y-%m-%d %H:%M")
+
+def generate_time_intervals_for_api_query():
+    """
+    generates the start_date and end_date
+    for the API requests executed with celery
+
+    the first part needed is to determine:
+    1- need to get the last time the query was executed
+    if there's any then we use that as a start date, else:
+    we need to query 1 year from today. and the end_date will
+    be the datetime snapshot of the day during the execution (datetime.now())
+
+    the snapshot will be saved on redis and then once called again, we'll use
+    the snapshot as a start_date and the end_date will be start_date + 1 hour
+
+    # right now missing these evaluations:
+        if the snapshot ends in a 19:30 then the end_date should be 1+ day
+         and starts at 8:30
+
+         if the snapshot day ends in friday then the end_date should start on monday at
+         8:30pm
+
+         if the snapshot it's on the limit time: current date-19:30, and the current date is the same
+         as the snapshot, the end_date is the same snapshot.
+
+     so basically the snapshot works closely with the current date the server has or the
+     current datetime there is in new york
+    :return: dict
+    """
+    result = {}
+    try:
+        today = get_current_ny_time()
+        start_date = get_current_ny_time(datetime.today()-timedelta(days=365))
+        end_date = today
+        status, result = settings.REDIS_OBJ.get_last_fetched_time()
+        if not status and 'error' in result.keys():
+            raise Exception(result['error'])
+        elif not status:
+            if not result['last_refresh_time_celery']:
+                result['start_date'] = datetime.fromisoformat(start_date)
+        else:
+            result['start_date'] = datetime.fromisoformat(result['last_refresh_time_celery'])
+        result['end_date'] = datetime.fromisoformat(end_date)
+        result['status'] = True
+
+    except Exception as E:
+        result['error'] = f"There was an Error: {E}"
+        result['status'] = False
+    return result
+
+
+def fetch_markets_data(symbols:list, start_date: datetime,
+                       end_date: datetime, interval: str='1hour') -> dict:
+    """
+    fetches the data for all of the markets in the list based on the needed and then
+    stores the data in the data base as needed for further processing
+    :param symbols: list of symbols required for the execution
+    :param start_date: datetime: when to start fetching from
+    :param end_date: last time to stop fetching from
+    :param interval: interval to get the data from :
+    for now 1hour but it supports daily, monthly, 1min, 15min, etc.
+    :return:dict
+    """
+    result = {'error': "",
+              'status': False
+              }
+    try:
+        status, error = settings.REDIS_OBJ.refresh_last_fetched_time(datetime.now().isoformat())
+        if not status
+            raise Exception(error['error'])
+
+        for symbol in symbols:
+            status, api_data = DATA_API_OBJ.live_market_data_getter(symbol=symbol, start_date=start_date,
+                                                                    end_date=end_date, interval=interval)
+
+            if status:
+                stock_details = api_data['stock_details']
+                # proccesed_data = serialize_data(pd.DataFrame(api_data['data']).dropna())
+                proccesed_data = pd.DataFrame(api_data['data']).dropna()
+                operations = dict(stochastic=calculate_stochastic(data=proccesed_data),
+                                  rsi=to_data_frame(operation_data=calculate_rsi(proccesed_data),
+                                                    time_data=proccesed_data['datetime']),
+                                  macd=calculate_macd(proccesed_data),
+                                  adr=to_data_frame(operation_data=calculate_adr(proccesed_data),
+                                                    time_data=proccesed_data['datetime']).dropna())
+
+                operations['olhcv'] = proccesed_data
+                operations['rsi'] = operations['rsi'].fillna(0)
+                operations['stochastic'] = operations['stochastic'].fillna(0)
+                status, error = store_full_data(stock_details, operations)
+                if not status:
+                    result['status'] = status
+                    result['error'] =error
+
+            else:
+                result['status'] = False
+                result['error'] = api_data
+
+    except Exception as X:
+        result['error'] = f"{X}"
+
+    finally:
+        return result
