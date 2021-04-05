@@ -7,7 +7,7 @@ from django.conf import settings
 from django.core.management import BaseCommand, CommandError
 from django.utils.timezone import make_aware
 from django.conf import settings
-from report_maker.helpers import process_file_data
+from report_maker.helpers import process_file_data, stock_excel_loader
 
 class Command(BaseCommand):
 
@@ -19,7 +19,7 @@ class Command(BaseCommand):
         :return: None
         """
         parser.add_argument(
-            "csvfile",
+            "--csvfile",
             type=str,
             help="path of the file to be loaded into the DB"
         )
@@ -29,6 +29,22 @@ class Command(BaseCommand):
             type=str,
             help="delimiter character to identify the end of a column",
             default=';'
+        )
+
+        parser.add_argument(
+            '--excel_file',
+            type=str,
+            help='Loads the given file with the stocks into the database,'
+                 'Location of the excel file to load the information from. This file must be in .xls extension to work.'
+        )
+
+        parser.add_argument(
+
+            '--sheet_number',
+            type=int,
+            help='Sheet number to load the information from, this is based on a multi-paged excel file, the default is 2',
+            default=2
+
         )
 
     def handle(self, **options):
@@ -46,8 +62,22 @@ class Command(BaseCommand):
                 self.style.SUCCESS(
                     f'{"Successfully loaded" if flag else "There was an error loading the data in the DB:"}'
                                    f'{result}'))
+
+        elif options.get('excel_file'):
+            file = options.get('excel_file')
+            sheet_number=options.get('sheet_number')
+            if file and sheet_number:
+                result = stock_excel_loader(file, sheet_number)
+                self.stdout.write(
+                    self.style.SUCCESS(f'Successfully loaded in the DB!!') if result['status'] else
+                self.style.ERROR(f"{result['error']}"))
+
+            else:
+                self.stderr.write("The parameters --excel_file and --sheet_number are mandatory to "
+                                  "load the data in the DB., check the --help option")
+
         else:
-            self.stderr.write("The parameter csvfile is mandatory to load the data in the DB.")
+            self.stderr.write("you must provide either a csvfile or a excel_file path to make this work.")
         exit(0)
 
 
