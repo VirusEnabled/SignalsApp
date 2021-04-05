@@ -7,6 +7,7 @@ from plotly.offline import iplot
 # import plotly.express as px
 from plotly.subplots import make_subplots
 import pandas as pd
+import xlrd
 import pdb
 import json
 from .models import *
@@ -669,9 +670,10 @@ def store_full_data(stock_details:dict,
     """
     status, error = False, ""
     try:
-        stock = Stock.objects.get(symbol=stock_details['symbol']) if Stock.exists(stock_details['symbol'])\
-            else Stock.objects.create(symbol=stock_details['symbol'],
-                                      stock_details=json.dumps(stock_details))
+        stock, created = Stock.objects.get_or_create(symbol__exact=stock_details['symbol'])
+        if created:
+            stock.stock_detail = json.dumps(stock_details)
+            stock.save()
 
         for i in range(len(operation_data['olhcv'])):
             if evaluate_integrity(operation_data['olhcv'].iloc[i],operation_data['rsi'].iloc[i],
@@ -934,7 +936,7 @@ def fetch_markets_data(symbols:list, start_date: datetime,
               }
     try:
         status, error = settings.REDIS_OBJ.refresh_last_fetched_time(datetime.now().isoformat())
-        if not status
+        if not status:
             raise Exception(error['error'])
 
         for symbol in symbols:
@@ -969,3 +971,37 @@ def fetch_markets_data(symbols:list, start_date: datetime,
 
     finally:
         return result
+
+def stock_excel_loader(excel_file:str, sheet_number:int=2):
+    """
+    Loads the values of the excel file to
+    the data base for further processing.
+    :param excel_file: text wrapper I/O
+    :param sheet_number: number of sheet to open
+    :return: dict
+    """
+    result = {'status': False}
+    try:
+        f = open(excel_file,'rb')
+        excel_data = pd.read_excel(f, sheet_name=sheet_number).to_dict()
+        for k in excel_data['INDEX'].keys():
+            stock, created = Stock.objects.update_or_create(symbol=excel_data['SYMBOL'][k])
+            if created:
+                stock.stock_details = json.dumps({'name': excel_data['STOCK NAME'][k]})
+                stock.save()
+
+            else:
+                details = json.loads(stock.stock_details)
+                if details:
+                    details.update(name=excel_data['STOCK NAME'][k])
+                else:
+                    details = {'name': excel_data['STOCK NAME'][k]}
+
+                stock.stock_details = json.dumps(details)
+                stock.save()
+
+        result['status'] = True
+    except Exception as X:
+        result['error'] = f"There was an error with your request {X}"
+
+    return result
