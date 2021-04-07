@@ -1,0 +1,13 @@
+# Absolute or relative path to the 'celery' command:
+CELERY_BIN="/home/ubuntu/signal_app/signaler/bin/celery"
+
+# App instance to use
+# comment out this line if you don't use an app
+CELERY_APP="SignalApp"
+
+
+# Where to chdir at start.
+CELERYBEAT_CHDIR="/home/ubuntu/signal_app/SignalsApp/SignalApp"
+
+# Extra arguments to celerybeat
+CELERYBEAT_OPTS="--schedule=/var/run/celery/celerybeat-schedule"
