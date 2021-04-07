@@ -927,7 +927,7 @@ def generate_time_intervals_for_api_query():
     return final_result
 
 
-def fetch_markets_data(symbols:list, interval: str='1hour') -> dict:
+def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
     """
     fetches the data for all of the markets in the list based on the needed and then
     stores the data in the data base as needed for further processing
@@ -972,7 +972,9 @@ def fetch_markets_data(symbols:list, interval: str='1hour') -> dict:
                 result['status'] = status
                 if not status:
                     raise Exception(error)
-
+                else:
+                    print(f"Data for symbol: {symbol}, has been successfully added to the DB"
+                          f" with the intervals {start_date} to {end_date}.")
             else:
                 raise Exception(api_data)
 

@@ -24,7 +24,7 @@ class APIDataHandler(object):
             'twelve_api': "https://api.twelvedata.com/",
 
         }
-        self.save_market_list()
+        # self.save_market_list()
 
     @property
     def _headers(self) -> dict:
