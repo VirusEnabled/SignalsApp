@@ -1,14 +1,8 @@
-from datetime import datetime, timedelta
 import pytz
-from.DataFetcherService import  *
-# import statistics as stats
+from .DataFetcherService import  *
 import plotly.graph_objects as p_go
-from plotly.offline import iplot
-# import plotly.express as px
 from plotly.subplots import make_subplots
 import pandas as pd
-import xlrd
-import pdb
 import json
 from .models import *
 import calendar
@@ -897,30 +891,43 @@ def generate_time_intervals_for_api_query():
      current datetime there is in new york
     :return: dict
     """
-    result = {}
+    final_result = {}
     try:
-        today = get_current_ny_time()
+        today = get_current_ny_time(date_time=datetime.today())
         start_date = get_current_ny_time(datetime.today()-timedelta(days=365))
         end_date = today
         status, result = settings.REDIS_OBJ.get_last_fetched_time()
         if not status and 'error' in result.keys():
             raise Exception(result['error'])
+
         elif not status:
             if not result['last_refresh_time_celery']:
-                result['start_date'] = datetime.fromisoformat(start_date)
+                final_result['start_date'] = datetime.fromisoformat(start_date)
         else:
-            result['start_date'] = datetime.fromisoformat(result['last_refresh_time_celery'])
-        result['end_date'] = datetime.fromisoformat(end_date)
-        result['status'] = True
+            final_result['start_date'] = datetime.fromisoformat(result['last_refresh_time_celery'])
+            final_result['end_date'] = datetime.fromisoformat(end_date)
+            if final_result['start_date'] > final_result['end_date']:
+                s = final_result.pop('start_date')
+                f = final_result.pop('end_date')
+                final_result['start_date'] = f
+                final_result['end_date'] = s
+
+        status, error = settings.REDIS_OBJ.refresh_last_fetched_time(new_refresh_time=datetime.fromisoformat(
+            end_date).isoformat())
+
+        if not status:
+            raise Exception(error)
+
+        final_result['status'] = status
 
     except Exception as E:
-        result['error'] = f"There was an Error: {E}"
-        result['status'] = False
-    return result
+        final_result['error'] = f"There was an Error: {E}"
+        final_result['status'] = False
+
+    return final_result
 
 
-def fetch_markets_data(symbols:list, start_date: datetime,
-                       end_date: datetime, interval: str='1hour') -> dict:
+def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
     """
     fetches the data for all of the markets in the list based on the needed and then
     stores the data in the data base as needed for further processing
@@ -935,9 +942,13 @@ def fetch_markets_data(symbols:list, start_date: datetime,
               'status': False
               }
     try:
-        status, error = settings.REDIS_OBJ.refresh_last_fetched_time(datetime.now().isoformat())
-        if not status:
-            raise Exception(error['error'])
+        dates = generate_time_intervals_for_api_query()
+
+        if not dates['status']:
+            raise Exception(dates['error'])
+
+        start_date = dates['start_date']
+        end_date = dates['end_date']
 
         for symbol in symbols:
             status, api_data = DATA_API_OBJ.live_market_data_getter(symbol=symbol, start_date=start_date,
@@ -958,15 +969,17 @@ def fetch_markets_data(symbols:list, start_date: datetime,
                 operations['rsi'] = operations['rsi'].fillna(0)
                 operations['stochastic'] = operations['stochastic'].fillna(0)
                 status, error = store_full_data(stock_details, operations)
+                result['status'] = status
                 if not status:
-                    result['status'] = status
-                    result['error'] =error
-
+                    raise Exception(error)
+                else:
+                    print(f"Data for symbol: {symbol}, has been successfully added to the DB"
+                          f" with the intervals {start_date} to {end_date}.")
             else:
-                result['status'] = False
-                result['error'] = api_data
+                raise Exception(api_data)
 
     except Exception as X:
+        result['status'] = False
         result['error'] = f"{X}"
 
     finally:
@@ -984,8 +997,11 @@ def stock_excel_loader(excel_file:str, sheet_number:int=2):
     try:
         f = open(excel_file,'rb')
         excel_data = pd.read_excel(f, sheet_name=sheet_number).to_dict()
+        high_priority = ['AMZN','FB','AAPL','NVDA','TSLA','MSFT','GOOGL']
         for k in excel_data['INDEX'].keys():
-            stock, created = Stock.objects.update_or_create(symbol=excel_data['SYMBOL'][k])
+            priority = Stock.choices[0] if excel_data['SYMBOL'][k] in high_priority else Stock.choices[2]
+            stock, created = Stock.objects.update_or_create(symbol=excel_data['SYMBOL'][k],
+                                                            priority=priority)
             if created:
                 stock.stock_details = json.dumps({'name': excel_data['STOCK NAME'][k]})
                 stock.save()

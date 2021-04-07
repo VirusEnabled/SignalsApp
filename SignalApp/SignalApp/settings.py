@@ -14,6 +14,7 @@ from pathlib import Path
 import os, sys
 from config import Config as conf
 from redis_caching import RedisHandler
+from celery.schedules import crontab
 
 conf_obj = conf()
 CONFIG = conf_obj.config
@@ -100,9 +101,18 @@ WSGI_APPLICATION = 'SignalApp.wsgi.application'
 ASGI_APPLICATION = 'SignalApp.asgi.application'
 
 # CELERY
-ALGORITHM_MAX_CALC_TIME = 10
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_CACHE_BACKEND = 'django-cache'
+
+# Celery cron tasks
+CELERY_BEAT_SCHEDULE = {
+ 'scheduled-task': {
+       'task': 'report_maker.tasks.load_stock_data_to_db',
+     'schedule': crontab(hour='9-19', minute=0, day_of_week="mon,tue,wed,thu,fri")
+
+ },
+
+}
 
 
 # Password validation

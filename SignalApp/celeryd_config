@@ -5,7 +5,7 @@ CELERYD_NODES="worker1"
 CELERY_BIN="/home/ubuntu/signal_app/signaler/bin/celery"
 
 # App instance to use
-CELERY_APP="mysite.tasks:app"
+CELERY_APP="SignalApp"
 
 # Where to chdir at start.
 CELERYD_CHDIR="/home/ubuntu/signal_app/SignalsApp/SignalApp"

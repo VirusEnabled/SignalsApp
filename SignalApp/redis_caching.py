@@ -38,7 +38,12 @@ class RedisHandler(object):
 				flag = True
 				result = json.loads(value.decode())
 			else:
-				result+=f": The key: {key} doesn't exist, try a different one."
+				raise Exception(f"The key: {key} doesn't exist, try a different one.")
+
+
+		except json.JSONDecodeError:
+			result = f"The value provided is not valid to be serialized by JSON handlers."
+			flag = False
 
 		except Exception as X:
 			result = f"{result}: {X}"
@@ -65,14 +70,17 @@ class RedisHandler(object):
 		try:
 
 			flag, existing_data = self.get_item(key)
-			if flag and isinstance(existing_data,list) and isinstance(value,list):
+			if flag and isinstance(existing_data, list) and isinstance(value, list):
 				new = existing_data + value
-				self.client.set(key, new)
+				self.client.set(key, json.dumps(new))
 
 			elif flag and isinstance(existing_data, dict) and isinstance(value, dict):
 				for key in value.keys():
 					existing_data[key] = value[key]
-				self.client.set(key, existing_data)
+				self.client.set(key, json.dumps(existing_data))
+
+			elif flag and isinstance(existing_data, str) and isinstance(value, str):
+				self.client.set(key, json.dumps(value))
 
 			elif not flag and "doesn't exist" in existing_data:
 				self.client.set(key, json.dumps(value))
@@ -82,6 +90,7 @@ class RedisHandler(object):
 
 			flag = True
 			result = 'Success'
+
 		except Exception as X:
 			result = f"{result}: {X}"
 
@@ -183,9 +192,9 @@ class RedisHandler(object):
 			return flag, result
 
 
-	def refresh_last_fetched_time(self, new_refresh_time):
+	def refresh_last_fetched_time(self, new_refresh_time:str):
 		"""
-		takes the given params and verifies if it was already saved, if so it updates the value
+		takes the given params and if so it updates the value
 		and return the last update, else it returns the given time and false as it didn't exist.
 		:param new_refresh_time: str: date and timestamp of the operation
 		from the symbol provided
@@ -195,11 +204,10 @@ class RedisHandler(object):
 		result = {}
 		try:
 			key = f"last_refresh_time_celery"
+			print(type(new_refresh_time))
 			flag, response = self.load_value(key, new_refresh_time)
 			if not flag:
 				raise Exception(response)
-			else:
-				result['result'] = response
 
 		except Exception as X:
 			result['error'] = f"There was an error: {X}"
@@ -232,7 +240,7 @@ class RedisHandler(object):
 				result['last_refresh_time_celery'] = item
 
 		except Exception as X:
-			result['error'] += f"There was an error with your request: {X}"
+			result['error'] = f"There was an error with your request: {X}"
 
 		finally:
 			return flag, result
