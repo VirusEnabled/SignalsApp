@@ -10,6 +10,8 @@ CELERY_APP="SignalApp"
 # Where to chdir at start.
 CELERYD_CHDIR="/home/ubuntu/signal_app/SignalsApp/SignalApp"
 
+BROKER_HEARTBEAT=0
+
 # Extra command-line arguments to the worker
 CELERYD_OPTS="--time-limit=30000 --concurrency=8"
 
