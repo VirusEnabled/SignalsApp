@@ -12,12 +12,15 @@ class BaseModel(models.Model):
 
 
 class Stock(BaseModel):
-    choices = [('LOW', 'LOW'),
-               ('MED', 'MEDIUM'),
-               ('HIGH', 'HIGH')]
+    choices = [('HIGH', 'HIGH'),
+               ('LOW', 'LOW'),
+               ('MED', 'MEDIUM')
+               ]
     symbol = models.CharField(max_length=100)
     stock_details = models.TextField(default="{}")
-    priority = models.CharField(max_length=20, choices=choices, default=choices[-1])
+    priority = models.CharField(max_length=20,
+                                choices=choices,
+                                default=choices[0])
 
     def __str__(self):
         return f"<{self.symbol}>"
