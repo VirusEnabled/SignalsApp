@@ -24,7 +24,7 @@ def load_stock_data_to_db():
     :return: None
     """
     stock_list = (symbol.symbol for symbol in Stock.objects.all().order_by('priority'))
-    result = fetch_markets_data(symbols=['TSLA'])
+    result = fetch_markets_data(symbols=stock_list)
     if not result['status']:
         logger.error(f"{result['error']}")
         # raise Exception(result['error'])
