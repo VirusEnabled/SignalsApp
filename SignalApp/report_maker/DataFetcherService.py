@@ -128,12 +128,16 @@ class APIDataHandler(object):
             endpoint = f"{self.api_root_endpoints['twelve_api']}time_series"
             params = {'symbol': symbol,
                       'interval': '1h' if not interval else interval,
-                      'start_date ':start_date,
-                      'end_date': end_date,
+                      'start_date ': start_date.date().isoformat(),
+                      # 'end_date': end_date.date().isoformat(),
+                      'timezone':'America/New_York',
                       'apikey': self.config['twelve_api_key'],
                       'order':"ASC"
                       }
-            response = req.get(endpoint, params=params, headers=self._headers)
+            definitive_endpoint = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval={interval}&" \
+                                  f"apikey={self.config['twelve_api_key']}&start_date={start_date.date().isoformat()}"
+            response = req.get(definitive_endpoint)
+            # response = req.get(endpoint, params=params, headers=self._headers)
             response_data = response.json()
             # import pdb; pdb.set_trace()
             if 'values' not in response_data.keys():
@@ -144,7 +148,7 @@ class APIDataHandler(object):
             else:
                 flag = True
                 result = {'stock_details':response_data['meta'],
-                          "data":response_data['values']
+                          "data": response_data['values']
                           }
 
         except json.JSONDecodeError as JS:
