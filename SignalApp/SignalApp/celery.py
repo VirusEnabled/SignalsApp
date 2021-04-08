@@ -5,4 +5,5 @@ import celery
 os.environ.setdefault('DJANGO_SETTINGS_MODULE','SignalApp.settings')
 app = celery.Celery('SignalApp')
 app.config_from_object('django.conf:settings', namespace='CELERY')
+app.conf.timezone = 'America/New_York'
 app.autodiscover_tasks()

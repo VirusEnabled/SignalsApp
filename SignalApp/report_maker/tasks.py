@@ -23,7 +23,7 @@ def load_stock_data_to_db():
     provided in the configurations.
     :return: None
     """
-    stock_list = (symbol.symbol for symbol in Stock.objects.all().order_by('priority'))
+    stock_list = [symbol.symbol for symbol in Stock.objects.filter(priority=Stock.choices[0]).order_by('symbol')]
     result = fetch_markets_data(symbols=stock_list)
     if not result['status']:
         logger.error(f"{result['error']}")
