@@ -894,7 +894,7 @@ def generate_time_intervals_for_api_query():
     final_result = {}
     try:
         today = get_current_ny_time(date_time=datetime.today())
-        start_date = get_current_ny_time(datetime.today()-timedelta(days=365))
+        start_date = get_current_ny_time(datetime.today()-timedelta(days=365,hours=5))
         end_date = today
         status, result = settings.REDIS_OBJ.get_last_fetched_time()
         if not status and 'error' in result.keys():
@@ -903,6 +903,7 @@ def generate_time_intervals_for_api_query():
         elif not status:
             if not result['last_refresh_time_celery']:
                 final_result['start_date'] = datetime.fromisoformat(start_date)
+                final_result['end_date'] = datetime.fromisoformat(end_date)
         else:
             final_result['start_date'] = datetime.fromisoformat(result['last_refresh_time_celery'])
             final_result['end_date'] = datetime.fromisoformat(end_date)
@@ -943,7 +944,7 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
               }
     try:
         dates = generate_time_intervals_for_api_query()
-
+        print(dates)
         if not dates['status']:
             raise Exception(dates['error'])
 

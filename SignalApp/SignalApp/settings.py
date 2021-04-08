@@ -108,7 +108,8 @@ CELERY_CACHE_BACKEND = 'django-cache'
 CELERY_BEAT_SCHEDULE = {
  'scheduled-task': {
        'task': 'report_maker.tasks.load_stock_data_to_db',
-     'schedule': crontab(hour='9-19', minute=0, day_of_week="mon,tue,wed,thu,fri")
+     'schedule': crontab(hour='9-18', minute=0, day_of_week="mon,tue,wed,thu,fri")
+     # 'schedule': 60.0
 
  },
 
