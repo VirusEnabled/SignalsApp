@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
+from datetime import datetime as t
 
 
 class BaseModel(models.Model):
@@ -41,6 +42,25 @@ class Stock(BaseModel):
         finally:
             return result
 
+    @staticmethod
+    def listed_last_historical_data_fetch(symbol: str, refresh_time: t) -> bool:
+        """
+        validates if the last historical data register equals the
+        given refresh time. this is done in order to make sure
+        you're updating the values related to the given symbol.
+        :param symbol: str
+        :param refresh_time: datetime
+        :return: bool
+        """
+        result = False
+        try:
+            stock = Stock.objects.get(symbol=symbol)
+            v = stock.historicaldata_set.last().api_date
+            result = v.month == refresh_time.month and v.year == refresh_time.year
+        except Exception as X:
+            print(f"DEBUGGING: There was an error boi {X}")
+
+        return result
 
 
 class HistoricalData(BaseModel):
@@ -94,6 +114,11 @@ class HistoricalData(BaseModel):
     @property
     def v(self):
         return self.volume
+
+    @property
+    def datetime(self):
+        return self.api_date.strftime("%Y-%m-%d %H:%m")
+
 
 
 class StochasticIndicator(BaseModel):
