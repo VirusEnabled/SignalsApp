@@ -602,31 +602,33 @@ def store_full_data(stock_details:dict,
                 record, created = HistoricalData.objects.get_or_create(
                                                 stock = stock,
                                                 api_date=operation_data['olhcv'].iloc[i]['datetime']
+
                                                         )
-                record.open = operation_data['olhcv'].iloc[i]['open'],
-                record.high = operation_data['olhcv'].iloc[i]['high'],
-                record.low = operation_data['olhcv'].iloc[i]['low'],
-                record.close = operation_data['olhcv'].iloc[i]['close'],
-                record.volume = operation_data['olhcv'].iloc[i]['volume'],
-                record.rsi = operation_data['rsi'].iloc[i]['operation_data'],
-                record.adr = operation_data['adr'].iloc[i]['operation_data'],
-                record.k_slow = operation_data['stochastic'].iloc[i]['k_slow'],
-                record.k_fast = operation_data['stochastic'].iloc[i]['k_fast'],
-                record.macd = operation_data['macd'].iloc[i]['macd'],
-                record.signal = operation_data['macd'].iloc[i]['signal'],
-                record.f_stoch = f_stoch,
-                record.f_rsi = f_rsi,
-                record.f_macd = f_macd,
+                record.open = float(operation_data['olhcv'].iloc[i]['open'])
+                record.high = float(operation_data['olhcv'].iloc[i]['high'])
+                record.low = float(operation_data['olhcv'].iloc[i]['low'])
+                record.close = float(operation_data['olhcv'].iloc[i]['close'])
+                record.volume = float(operation_data['olhcv'].iloc[i]['volume'])
+                record.rsi = float(operation_data['rsi'].iloc[i]['operation_data'])
+                record.adr = float(operation_data['adr'].iloc[i]['operation_data'])
+                record.k_slow = float(operation_data['stochastic'].iloc[i]['k_slow'])
+                record.k_fast = float(operation_data['stochastic'].iloc[i]['k_fast'])
+                record.macd = float(operation_data['macd'].iloc[i]['macd'])
+                record.signal = float(operation_data['macd'].iloc[i]['signal'])
+                record.f_stoch = f_stoch
+                record.f_rsi = f_rsi
+                record.f_macd = f_macd
                 record.bullet = bullet
+                # print(i)
+                if not created:
+                    record.updated_at = datetime.now()
+
+                # pdb.set_trace()
                 record.save()
-
-
-
 
         status = True
     except Exception as X:
         error = f"There was an error with the store request: {X}"
-        print("ERROR HERE", X)
 
     finally:
         return status, error
