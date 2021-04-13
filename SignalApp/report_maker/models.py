@@ -89,7 +89,7 @@ class HistoricalData(BaseModel):
     f_rsi = models.CharField(max_length=20, default=choices[-1])
     f_macd = models.CharField(max_length=20, default=choices[-1])
     bullet = models.CharField(max_length=20, default=choices_bullet[-1])
-    api_date = models.DateTimeField()
+    api_date = models.DateTimeField(unique=True)
 
 
     def __str__(self):
