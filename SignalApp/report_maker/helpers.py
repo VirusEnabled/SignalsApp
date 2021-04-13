@@ -599,25 +599,29 @@ def store_full_data(stock_details:dict,
                 bullet = 'START' if f_stoch == f_rsi == f_macd == 'HIGH' else 'STOP' \
                     if f_stoch == f_rsi == f_macd == 'LOW' else 'PAUSE'
 
-                HistoricalData.objects.update_or_create(
+                record, created = HistoricalData.objects.get_or_create(
                                                 stock = stock,
-                                                open = operation_data['olhcv'].iloc[i]['open'],
-                                                high = operation_data['olhcv'].iloc[i]['high'],
-                                                low = operation_data['olhcv'].iloc[i]['low'],
-                                                close = operation_data['olhcv'].iloc[i]['close'],
-                                                volume = operation_data['olhcv'].iloc[i]['volume'],
-                                                api_date = operation_data['olhcv'].iloc[i]['datetime'],
-                                                rsi = operation_data['rsi'].iloc[i]['operation_data'],
-                                                adr = operation_data['adr'].iloc[i]['operation_data'],
-                                                k_slow = operation_data['stochastic'].iloc[i]['k_slow'],
-                                                k_fast = operation_data['stochastic'].iloc[i]['k_fast'],
-                                                macd = operation_data['macd'].iloc[i]['macd'],
-                                                signal = operation_data['macd'].iloc[i]['signal'],
-                                                f_stoch=f_stoch,
-                                                f_rsi = f_rsi,
-                                                f_macd = f_macd,
-                                                bullet= bullet
-                                                )
+                                                api_date=operation_data['olhcv'].iloc[i]['datetime']
+                                                        )
+                record.open = operation_data['olhcv'].iloc[i]['open'],
+                record.high = operation_data['olhcv'].iloc[i]['high'],
+                record.low = operation_data['olhcv'].iloc[i]['low'],
+                record.close = operation_data['olhcv'].iloc[i]['close'],
+                record.volume = operation_data['olhcv'].iloc[i]['volume'],
+                record.rsi = operation_data['rsi'].iloc[i]['operation_data'],
+                record.adr = operation_data['adr'].iloc[i]['operation_data'],
+                record.k_slow = operation_data['stochastic'].iloc[i]['k_slow'],
+                record.k_fast = operation_data['stochastic'].iloc[i]['k_fast'],
+                record.macd = operation_data['macd'].iloc[i]['macd'],
+                record.signal = operation_data['macd'].iloc[i]['signal'],
+                record.f_stoch = f_stoch,
+                record.f_rsi = f_rsi,
+                record.f_macd = f_macd,
+                record.bullet = bullet
+                record.save()
+
+
+
 
         status = True
     except Exception as X:

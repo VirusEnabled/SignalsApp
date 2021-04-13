@@ -89,7 +89,7 @@ class HistoricalData(BaseModel):
     f_rsi = models.CharField(max_length=20, default=choices[-1])
     f_macd = models.CharField(max_length=20, default=choices[-1])
     bullet = models.CharField(max_length=20, default=choices_bullet[-1])
-    api_date = models.DateTimeField(unique=True)
+    api_date = models.DateTimeField()
 
 
     def __str__(self):
@@ -119,6 +119,20 @@ class HistoricalData(BaseModel):
     def datetime(self):
         return self.api_date.strftime("%Y-%m-%d %H:%m")
 
+
+    # def save(self, force_insert=False, force_update=False, using=None,
+    #          update_fields=None, **kwargs):
+    #     try:
+    #         obj = HistoricalData.objects.get(stock=self.stock, api_date=self.api_date)
+    #         if kwargs['create']:
+    #             raise Exception("The object you're trying to create already exists.")
+    #
+    #         else:
+    #             raise  models.ObjectDoesNotExist
+    #
+    #     except models.ObjectDoesNotExist:
+    #         return super().save(force_insert=force_insert,force_update=force_update,
+    #                      using=using,update_fields=update_fields)
 
 
 class StochasticIndicator(BaseModel):
