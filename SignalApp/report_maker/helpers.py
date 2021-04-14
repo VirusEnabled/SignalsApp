@@ -886,6 +886,7 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
                     stored = True
                     obj = Stock.objects.get(symbol=symbol)
                     data_container['model_data'] =HistoricalData.objects.filter(stock=obj.id).order_by('-api_date')[:14]
+                    data_container['model_data'].order_by('api_date')
                 operations = generate_statistical_indicators(data=data_container, stored=stored)
                 if not operations['status']:
                     raise  Exception(operations['error'])
