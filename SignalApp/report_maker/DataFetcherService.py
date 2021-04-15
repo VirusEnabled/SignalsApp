@@ -149,9 +149,10 @@ class APIDataHandler(object):
 
                 flag = True
                 result = {'stock_details':response_data['meta'],
-                          "data": [value for value in response_data['values'] if float(value['volume']) > 0.00]
+                          "data": response_data['values']
                           }
                 result['data'].reverse()
+                result['data'] = [value for value in result['data'] if float(value['volume']) > 0.00]
 
         except json.JSONDecodeError as JS:
             flag = False
