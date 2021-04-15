@@ -790,7 +790,8 @@ def generate_time_intervals_for_api_query():
     final_result = {}
     try:
         today = get_current_ny_time(date_time=datetime.today())
-        start_date = get_current_ny_time(datetime.today()-timedelta(days=365,hours=5))
+        _start_date = datetime(year=datetime.now().year-1,month=1,day=4,hour=9,minute=30)
+        start_date = get_current_ny_time(_start_date)
         end_date = today
         status, result = settings.REDIS_OBJ.get_last_fetched_time()
         if not status and 'error' in result.keys():
