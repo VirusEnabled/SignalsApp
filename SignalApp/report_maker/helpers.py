@@ -328,10 +328,12 @@ def calculate_stochastic(data: pd.DataFrame) -> pd.DataFrame:
         Fast stochastic calculation
     %K = (Current Close - Lowest Low)/
     (Highest High - Lowest Low) * 100
+
     %D = 3-day SMA of %K
 
     Slow stochastic calculation
     %K = %D of fast stochastic
+
     %D = 3-day SMA of %K
 
     When %K crosses above %D, buy signal
@@ -343,20 +345,22 @@ def calculate_stochastic(data: pd.DataFrame) -> pd.DataFrame:
     stochastic = data.copy().dropna()
     d= 3 # 3 days of SMA which come from K
     k = 14 # days of the window
-    low_min = stochastic['low'].rolling(window=k).min().dropna()
-    high_max = stochastic['high'].rolling(window=k).max().dropna()
+    low_min = stochastic['close'].rolling(window=k).min().dropna()
+    high_max = stochastic['close'].rolling(window=k).max().dropna()
 
-    # Fast Stochastic
-    # pdb.set_trace()
-    stochastic['k_fast'] = 100 * (stochastic['close'].astype(dtype=float) -
-                                  low_min.astype(dtype=float)) / (high_max.astype(dtype=float) -
-                                                                  low_min.astype(dtype=float))
-    stochastic['d_fast'] = stochastic['k_fast'].rolling(window=d).mean()
+    # K value of stochastic.
+    pdb.set_trace()
+    stochastic['k'] =  100 * ((stochastic['close'].astype(dtype=float) -low_min.astype(dtype=float)) /
+                       (high_max.astype(dtype=float) -low_min.astype(dtype=float)))
 
-    # Slow Stochastic
-    stochastic['k_slow'] = stochastic["d_fast"]
-    stochastic['d_slow'] = stochastic['k_slow'].rolling(window=d).mean()
-
+    # stochastic['k_fast'] = 100 * (stochastic['close'].astype(dtype=float) -
+    #                               low_min.astype(dtype=float)) / (high_max.astype(dtype=float) -
+    #                                                               low_min.astype(dtype=float))
+    # stochastic['d_fast'] = stochastic['k_fast'].rolling(window=d).mean()
+    #
+    # # Slow Stochastic
+    # stochastic['k_slow'] = stochastic["d_fast"]
+    # stochastic['d_slow'] = stochastic['k_slow'].rolling(window=d).mean()
     return stochastic
 
 
@@ -592,12 +596,12 @@ def store_full_data(stock_details:dict,
                                   operation_data['adr'].iloc[i],operation_data['macd'].iloc[i],
                                   operation_data['stochastic'].iloc[i]):
 
-                f_stoch = 'HIGH' if operation_data['stochastic'].iloc[i]['k_fast'] > 20.00 else 'LOW'
-                f_rsi = 'HIGH' if operation_data['rsi'].iloc[i]['operation_data'] > 70.00 else 'LOW'
-                f_macd = 'HIGH' if operation_data['macd'].iloc[i]['macd'] > operation_data['macd'].iloc[i]['signal'] \
-                    else 'LOW'
-                bullet = 'START' if f_stoch == f_rsi == f_macd == 'HIGH' else 'STOP' \
-                    if f_stoch == f_rsi == f_macd == 'LOW' else 'PAUSE'
+                f_stoch = 'COMPRA' if operation_data['stochastic'].iloc[i]['k_fast'] > 20.00 else 'VENTA'
+                f_rsi = 'COMPRA' if operation_data['rsi'].iloc[i]['operation_data'] > 70.00 else 'VENTA'
+                f_macd = 'COMPRA' if operation_data['macd'].iloc[i]['macd'] > operation_data['macd'].iloc[i]['signal'] \
+                    else 'VENTA'
+                bullet = 'ROJO' if f_stoch == f_rsi == f_macd == 'VENTA' else 'AZUL' \
+                    if f_stoch == f_rsi == f_macd == 'COMPRA' else 'BLANCO'
 
                 record, created = HistoricalData.objects.get_or_create(
                                                 stock = stock,
@@ -613,6 +617,7 @@ def store_full_data(stock_details:dict,
                 record.adr = float(operation_data['adr'].iloc[i]['operation_data'])
                 record.k_slow = float(operation_data['stochastic'].iloc[i]['k_slow'])
                 record.k_fast = float(operation_data['stochastic'].iloc[i]['k_fast'])
+                record.k = float(operation_data['stochastic'].iloc[i]['k'])
                 record.macd = float(operation_data['macd'].iloc[i]['macd'])
                 record.signal = float(operation_data['macd'].iloc[i]['signal'])
                 record.f_stoch = f_stoch
