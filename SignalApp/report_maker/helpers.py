@@ -885,8 +885,10 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
                        Stock.listed_last_historical_data_fetch(symbol=symbol, refresh_time=start_date)):
                     stored = True
                     obj = Stock.objects.get(symbol=symbol)
-                    data_container['model_data'] =HistoricalData.objects.filter(stock=obj.id).order_by('-api_date')[:14]
-                    data_container['model_data'].order_by('api_date')
+                    data_container['model_data'] = HistoricalData.objects.filter(stock=obj.id).order_by('-api_date')[:14]
+                    data_container['model_data'] = [record for record in data_container['model_data']]
+                    data_container['model_data'].reverse()
+                # pdb.set_trace()
                 operations = generate_statistical_indicators(data=data_container, stored=stored)
                 if not operations['status']:
                     raise  Exception(operations['error'])
