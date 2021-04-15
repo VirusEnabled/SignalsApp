@@ -149,7 +149,7 @@ class APIDataHandler(object):
 
                 flag = True
                 result = {'stock_details':response_data['meta'],
-                          "data": [value for value in response_data['values'] if value['volume'] > 0.00]
+                          "data": [value for value in response_data['values'] if float(value['volume']) > 0.00]
                           }
                 result['data'].reverse()
 
