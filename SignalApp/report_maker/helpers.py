@@ -882,6 +882,7 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
                 stored = False
                 stock_details = api_data['stock_details']
                 data_container['api_data'] = api_data['data']
+
                 if(start_date.year == end_date.year and
                        Stock.listed_last_historical_data_fetch(symbol=symbol, refresh_time=start_date)):
                     stored = True
