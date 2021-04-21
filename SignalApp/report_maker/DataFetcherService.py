@@ -126,18 +126,19 @@ class APIDataHandler(object):
         result = {}
         try:
             endpoint = f"{self.api_root_endpoints['twelve_api']}time_series"
-            params = {'symbol': symbol,
-                      'interval': '1h' if not interval else interval,
-                      'start_date ': start_date.date().isoformat(),
+            params = {
+                        # 'symbol': symbol,
+                      # 'interval': '1h' if not interval else interval,
+                      # 'start_date ': start_date.date().isoformat(),
                       # 'end_date': end_date.date().isoformat(),
                       'timezone':'America/New_York',
-                      'apikey': self.config['twelve_api_key'],
+                      # 'apikey': self.config['twelve_api_key'],
                       'order':"asc",
                       }
             definitive_endpoint = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval={interval}&" \
                                   f"apikey={self.config['twelve_api_key']}&start_date={start_date.date().isoformat()}"
             print(definitive_endpoint)
-            response = req.get(definitive_endpoint)
+            response = req.get(definitive_endpoint, params=params)
             # response = req.get(endpoint, params=params, headers=self._headers)
             response_data = response.json()
             if 'values' not in response_data.keys():
