@@ -368,10 +368,10 @@ def calculate_macd(data: pd.DataFrame) -> pd.DataFrame:
     :param data:
     :return: dataframe
     """
-    ema12 = data['close'].ewm(span=12, adjust=False).mean()
-    ema26 = data['close'].ewm(span=26, adjust=False).mean()
+    ema12 = data['close'].ewm(span=8, adjust=False).mean()
+    ema26 = data['close'].ewm(span=21, adjust=False).mean()
     macd = ema12 - ema26
-    signal = macd.ewm(span=9, adjust=False).mean()
+    signal = macd.ewm(span=5, adjust=False).mean()
     result = pd.DataFrame(data={'macd': macd, 'signal':signal,'datetime':data['datetime']})
     return result
 
