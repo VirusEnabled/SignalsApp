@@ -357,7 +357,7 @@ class Stoch(StochasticKAndD):
             window=time_period).min()
         df["k"] = 100 * ((df["close"].astype(float) - df["lowest low"].astype(float)) /
                               (df["highest high"].astype(float) - df["lowest low"]).astype(float))
-        df["d"] = df["k"].rolling(window=3).mean()
+        df["k"] = df["k"].rolling(window=3).mean()
 
         df = df.drop(["highest high", "lowest low"], axis=1)
         return df
@@ -401,19 +401,19 @@ def calculate_rsi(data: pd.DataFrame) -> pd.Series:
     :return: float
     """
     window_length = 14  # this should change based on the needs
-    rsi_holder= RSIndicator()
-    rsi = rsi_holder.get_value_list(close_values=data['close'],
-                                    time_period=window_length)
-    # delta = data['close'].astype(dtype=float).diff()
-    # up = delta.clip(lower=0)
-    # down = -1 * delta.clip(upper=0)
-    # ema_up = up.ewm(com=window_length, adjust=False).mean()
-    # ema_down = down.ewm(com=window_length, adjust=False).mean()
-    # rs = ema_up / ema_down
-    # rsi = 100.0 - (100.0 / (1.0 + rs))
-    # # rsi = rsi.dropna()
-    # rsi = rsi.dropna().clip(lower=1)
-    # print(rsi)
+    # rsi_holder= RSIndicator()
+    # rsi = rsi_holder.get_value_list(close_values=data['close'],
+    #                                 time_period=window_length)
+    delta = data['close'].astype(dtype=float).diff()
+    up = delta.clip(lower=0)
+    down = -1 * delta.clip(upper=0)
+    ema_up = up.ewm(com=window_length, adjust=False).mean()
+    ema_down = down.ewm(com=window_length, adjust=False).mean()
+    rs = ema_up / ema_down
+    rsi = 100.0 - (100.0 / (1.0 + rs))
+    # rsi = rsi.dropna()
+    rsi = rsi.dropna().clip(lower=1)
+    print(rsi)
     return rsi
 
 
