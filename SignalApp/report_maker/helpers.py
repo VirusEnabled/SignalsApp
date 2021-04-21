@@ -758,9 +758,7 @@ def store_full_data(stock_details:dict,
 
                 record, created = HistoricalData.objects.get_or_create(
                                                 stock = stock,
-                                                api_date=datetime.fromisoformat(
-                                                    operation_data['olhcv'].iloc[i]['datetime']
-                                                    )
+                                                api_date=operation_data['olhcv'].iloc[i]['datetime']
                                                 )
                 rsi = float(operation_data['rsi'].iloc[i]['operation_data'])
                 signal = float(operation_data['macd'].iloc[i]['signal'])
@@ -804,10 +802,9 @@ def store_full_data(stock_details:dict,
                 # pdb.set_trace()
                 record.save()
                 # if i == 2:
-                #     pdb.set_trace()
 
 
-
+        # pdb.set_trace()
         status = True
     except Exception as X:
         error = f"There was an error with the store request: {X}"
