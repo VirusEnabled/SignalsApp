@@ -517,6 +517,12 @@ def generate_statistical_indicators(data: dict, stored:bool =False) -> dict:
         result['stochastic'] = result['stochastic'].fillna(0)
         result['adr'] = result['adr'].fillna(0)
         result['macd'] = result['macd'].fillna(0)
+        result['olhcv']['datetime'] = clean_stock_datetime(result['olhcv']['datetime'])
+        result['rsi']['datetime'] = clean_stock_datetime(result['rsi']['datetime'])
+        result['stochastic']['datetime'] = clean_stock_datetime(result['stochastic']['datetime'])
+        result['adr']['datetime'] =clean_stock_datetime(result['adr']['datetime'])
+        result['macd']['datetime'] = clean_stock_datetime(result['macd']['datetime'])
+
         result['status'] = True
         # pdb.set_trace()
 
@@ -644,6 +650,26 @@ def format_dt(dataframe: pd.DataFrame):
 
     return pd.DataFrame(resultant)
 
+def clean_stock_datetime(date_list: pd.Series) -> pd.Series:
+    """
+    cleans the datetime field by just adding
+    30 mins to each date time that doesn't have 30 mins.
+    in it.
+    :param date_list: Series
+    :return:Series
+    """
+
+    for i in range(len(date_list)):
+        date_eval = datetime.fromisoformat(date_list[i])
+        if date_eval.minute == 30:
+            break
+        date_list[i] = datetime(year=date_eval.year,
+                              month=date_eval.month,
+                              day=date_eval.day,
+                              hour=date_eval.hour,
+                              minute=date_eval.minute+30,
+                              second=date_eval.second).isoformat()
+    return date_list
 
 def process_file_data(csvfile, delimiter=";"):
     """
@@ -709,12 +735,17 @@ def store_full_data(stock_details:dict,
         if created:
             stock.stock_detail = json.dumps(stock_details)
             stock.save()
+        print(len(operation_data['olhcv']),
+              len(operation_data['rsi']),
+              len(operation_data['macd']),
+              len(operation_data['adr']),
+              len(operation_data['stochastic']))
 
         for i in range(len(operation_data['olhcv'])):
             if evaluate_integrity(operation_data['olhcv'].iloc[i],operation_data['rsi'].iloc[i],
                                   operation_data['adr'].iloc[i],operation_data['macd'].iloc[i],
                                   operation_data['stochastic'].iloc[i]):
-
+                # pdb.set_trace()
                 f_stoch = 'COMPRA' if operation_data['stochastic'].iloc[i]['k'] > 20.00 else 'VENTA'
                 f_rsi = 'COMPRA' if operation_data['rsi'].iloc[i]['operation_data'] > 70.00 else 'VENTA'
                 f_macd = 'COMPRA' if operation_data['macd'].iloc[i]['macd'] > operation_data['macd'].iloc[i]['signal'] \
@@ -722,12 +753,15 @@ def store_full_data(stock_details:dict,
                 bullet = 'ROJO' if f_stoch == f_rsi == f_macd == 'VENTA' else 'AZUL' \
                     if f_stoch == f_rsi == f_macd == 'COMPRA' else 'BLANCO'
 
+
+                # pdb.set_trace()
+
                 record, created = HistoricalData.objects.get_or_create(
                                                 stock = stock,
                                                 api_date=datetime.fromisoformat(
                                                     operation_data['olhcv'].iloc[i]['datetime']
-                                                ).astimezone(pytz.timezone('America/New_York'))
-                                                        )
+                                                    )
+                                                )
                 rsi = float(operation_data['rsi'].iloc[i]['operation_data'])
                 signal = float(operation_data['macd'].iloc[i]['signal'])
                 macd = float(operation_data['macd'].iloc[i]['macd'])
@@ -769,6 +803,10 @@ def store_full_data(stock_details:dict,
 
                 # pdb.set_trace()
                 record.save()
+                # if i == 2:
+                #     pdb.set_trace()
+
+
 
         status = True
     except Exception as X:
@@ -934,7 +972,7 @@ def generate_time_intervals_for_api_query():
     final_result = {}
     try:
         today = get_current_ny_time(date_time=datetime.today())
-        _start_date = datetime(year=datetime.now().year-2,month=1,day=4,hour=9,minute=30)
+        _start_date = datetime(year=datetime.now().year-1,month=1,day=4,hour=9,minute=30)
         start_date = get_current_ny_time(_start_date)
         end_date = today
         status, result = settings.REDIS_OBJ.get_last_fetched_time()
@@ -1022,7 +1060,6 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
         for symbol in symbols:
             status, api_data = DATA_API_OBJ.live_market_data_getter(symbol=symbol, start_date=start_date,
                                                                     end_date=end_date, interval=interval)
-
             if status:
                 data_container = {}
                 stored = False
@@ -1035,6 +1072,7 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
                     # obj = Stock.objects.get(symbol=symbol)
                     records = get_last_records(symbol=symbol,first_record_date=data_container['api_data'][0]['datetime'],
                                                                     window_number=window)
+                    print(status, symbol, dates)
                     if not records['status']:
                         raise  Exception(records['error'])
                     data_container['model_data'] = records['data']
@@ -1044,7 +1082,7 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
                 # pdb.set_trace()
                 operations = generate_statistical_indicators(data=data_container, stored=stored)
                 if not operations['status']:
-                    raise  Exception(operations['error'])
+                    raise Exception(operations['error'])
 
                 status, error = store_full_data(stock_details, operations)
                 result['status'] = status
