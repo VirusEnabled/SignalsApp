@@ -8,10 +8,12 @@ from .models import *
 import pdb
 from .serializers import *
 import calendar
-
-
+# from talipp.indicators import RSI, MACD, Stoch
+from technical_indicators_lib import RSI, MACD,StochasticKAndD
+import numpy as np
 
 DATA_API_OBJ = APIDataHandler()
+
 
 def generate_candle_sticks_graph(stock_historical_data, stock_details):
     """
@@ -269,6 +271,97 @@ def get_stock_historical_candlestick_graph(symbol, start_date=None,
     # print(status, result)
     return status, result
 
+class RSIndicator(RSI):
+    def __init__(self):
+        super().__init__()
+
+    def get_value_list(self, close_values: pd.Series, time_period: int = 14)->pd.Series:
+        """
+        overriding the main methods so that we can
+        have this utility work because it's providing error
+        :param close_values: series of the
+        :param time_period: int
+        :return: pd.Series
+        """
+        self.df["close"] = close_values
+        self.df["close_prev"] = self.df["close"].shift(1)
+        self.df["GAIN"] = 0.0
+        self.df["LOSS"] = 0.0
+
+        self.df.loc[self.df["close"].astype(float) > self.df["close_prev"].astype(float),
+                    "GAIN"] = self.df["close"].astype(float) - self.df["close_prev"].astype(float)
+
+        self.df.loc[self.df["close_prev"].astype(float) > self.df["close"].astype(float),
+                    "LOSS"] = self.df["close_prev"].astype(float) - self.df["close"].astype(float)
+
+        self.df["AVG_GAIN"] = self.df["GAIN"].ewm(span=time_period).mean()
+        self.df["AVG_LOSS"] = self.df["LOSS"].ewm(span=time_period).mean()
+        self.df["AVG_GAIN"].iloc[:time_period] = np.nan
+        self.df["AVG_LOSS"].iloc[:time_period] = np.nan
+
+        self.df["RS"] = self.df["AVG_GAIN"] / (self.df["AVG_LOSS"] + 0.000001)  # to avoid divide by zero
+        rsi_values = 100 - ((100 / (1 + self.df["RS"])))
+
+        self.df = pd.DataFrame(None)
+
+        return rsi_values.dropna()
+
+
+def get_last_records(symbol:str, first_record_date: str ,window_number:int=14):
+    """
+    gets the last 14 records related to the stock to make all
+    calculations so that it doesn't affect the input of the data,
+    this only works when refreshing the data
+    :param symbol: str
+    :param first_record_date: str: the date of the first record to get the past 14 items
+    :param window_number: int
+    :return:list of dict
+    """
+    result = {}
+    try:
+        stock = Stock.objects.get(symbol=symbol)
+        historical_data = stock.historicaldata_set.filter(api_date__lt=datetime.fromisoformat(
+            first_record_date)).order_by('-api_date')
+        records = HistoricalDataSerializer(instance=historical_data,many=True).data[:window_number
+                  if window_number<=len(historical_data) else 14]
+        records.reverse()
+        result['data'] = records
+        result['status'] = True
+
+    except Exception as X:
+        result['status'] = False
+        result['error'] = f"There was an internal Error: {X}"
+
+    return result
+
+class Stoch(StochasticKAndD):
+    def __init__(self):
+        super().__init__()
+
+    def get_value_df(self, df: pd.DataFrame, time_period: int = 14):
+        """
+        Get The expected indicator in a pandas dataframe.
+
+        Args:
+            df(pandas.DataFrame): pandas Dataframe with high, low and close values\n
+            time_period(int): look back time period \n
+
+        Returns:
+            pandas.DataFrame: new pandas dataframe adding d and k as new columns,
+            preserving the columns which already exists\n
+        """
+
+        df["highest high"] = df["high"].rolling(
+            window=time_period).max()
+        df["lowest low"] = df["low"].rolling(
+            window=time_period).min()
+        df["k"] = 100 * ((df["close"].astype(float) - df["lowest low"].astype(float)) /
+                              (df["highest high"].astype(float) - df["lowest low"]).astype(float))
+        df["d"] = df["k"].rolling(window=3).mean()
+
+        df = df.drop(["highest high", "lowest low"], axis=1)
+        return df
+
 def calculate_macd(data: pd.DataFrame) -> pd.DataFrame:
     """
     generates the calulation for the MACD
@@ -307,17 +400,19 @@ def calculate_rsi(data: pd.DataFrame) -> pd.Series:
     :param data:
     :return: float
     """
-
     window_length = 14  # this should change based on the needs
-    delta = data['close'].astype(dtype=float).diff()
-    up = delta.clip(lower=0)
-    down = -1 * delta.clip(upper=0)
-    ema_up = up.ewm(com=13, adjust=False).mean()
-    ema_down = down.ewm(com=13, adjust=False).mean()
-    rs = ema_up / ema_down
-    rsi = 100.0 - (100.0 / (1.0 + rs))
-    # rsi = rsi.dropna()
-    rsi = rsi.dropna().clip(lower=1)
+    rsi_holder= RSIndicator()
+    rsi = rsi_holder.get_value_list(close_values=data['close'],
+                                    time_period=window_length)
+    # delta = data['close'].astype(dtype=float).diff()
+    # up = delta.clip(lower=0)
+    # down = -1 * delta.clip(upper=0)
+    # ema_up = up.ewm(com=window_length, adjust=False).mean()
+    # ema_down = down.ewm(com=window_length, adjust=False).mean()
+    # rs = ema_up / ema_down
+    # rsi = 100.0 - (100.0 / (1.0 + rs))
+    # # rsi = rsi.dropna()
+    # rsi = rsi.dropna().clip(lower=1)
     # print(rsi)
     return rsi
 
@@ -328,10 +423,12 @@ def calculate_stochastic(data: pd.DataFrame) -> pd.DataFrame:
         Fast stochastic calculation
     %K = (Current Close - Lowest Low)/
     (Highest High - Lowest Low) * 100
+
     %D = 3-day SMA of %K
 
     Slow stochastic calculation
     %K = %D of fast stochastic
+
     %D = 3-day SMA of %K
 
     When %K crosses above %D, buy signal
@@ -340,23 +437,28 @@ def calculate_stochastic(data: pd.DataFrame) -> pd.DataFrame:
     :return: dataframe
 
     """
-    stochastic = data.copy().dropna()
-    d= 3 # 3 days of SMA which come from K
     k = 14 # days of the window
-    low_min = stochastic['low'].rolling(window=k).min().dropna()
-    high_max = stochastic['high'].rolling(window=k).max().dropna()
+    d = 3 # 3 days of SMA which come from K
+    indicator = Stoch()
+    stochastic = indicator.get_value_df(df=data, time_period=k)
 
-    # Fast Stochastic
-    # pdb.set_trace()
-    stochastic['k_fast'] = 100 * (stochastic['close'].astype(dtype=float) -
-                                  low_min.astype(dtype=float)) / (high_max.astype(dtype=float) -
-                                                                  low_min.astype(dtype=float))
-    stochastic['d_fast'] = stochastic['k_fast'].rolling(window=d).mean()
+    # stochastic = data.copy().dropna()
+    # low_min = stochastic['close'].rolling(window=k).min().dropna()
+    # high_max = stochastic['close'].rolling(window=k).max().dropna()
+    #
+    # # K value of stochastic.
+    # stochastic['k'] = 100 * ((stochastic['close'].astype(dtype=float) - low_min.astype(dtype=float)) /
+    #                    (high_max.astype(dtype=float) -low_min.astype(dtype=float)))
+    # stochastic['d'] = stochastic['k'].rolling(window=d).mean()
 
-    # Slow Stochastic
-    stochastic['k_slow'] = stochastic["d_fast"]
-    stochastic['d_slow'] = stochastic['k_slow'].rolling(window=d).mean()
-
+    # stochastic['k_fast'] = 100 * (stochastic['close'].astype(dtype=float) -
+    #                               low_min.astype(dtype=float)) / (high_max.astype(dtype=float) -
+    #                                                               low_min.astype(dtype=float))
+    # stochastic['d_fast'] = stochastic['k_fast'].rolling(window=d).mean()
+    #
+    # # Slow Stochastic
+    # stochastic['k_slow'] = stochastic["d_fast"]
+    # stochastic['d_slow'] = stochastic['k_slow'].rolling(window=d).mean()
     return stochastic
 
 
@@ -376,30 +478,34 @@ def generate_statistical_indicators(data: dict, stored:bool =False) -> dict:
             processed_data = pd.DataFrame(data=data['api_data'])
 
         else:
-            final_container = []
-            for serialized in data['model_data']:
-                final_container.append({'open':serialized.o,
-                                         'close':serialized.c,
-                                         'high': serialized.h,
-                                         'low': serialized.l,
-                                         'volume': serialized.v,
-                                         'datetime': serialized.datetime
-                                         })
-            final_container+=data['api_data']
+
+            final_container = data['model_data'] + data['api_data']
             processed_data = pd.DataFrame(data=final_container).dropna()
+
         result = dict(stochastic=calculate_stochastic(data=processed_data),
                       rsi=to_data_frame(operation_data=calculate_rsi(processed_data),
                                         time_data=processed_data['datetime']),
                       macd=calculate_macd(processed_data),
                       adr=to_data_frame(operation_data=calculate_adr(processed_data),
-                                        time_data=processed_data['datetime']).dropna()
+                                        time_data=processed_data['datetime'])
                       )
         result['olhcv'] = processed_data
+
+        # if stored:
+        #     result['rsi'] = result['rsi'].dropna()
+        #     result['stochastic'] = result['stochastic'].dropna()
+        #     result['adr'] = result['adr'].dropna()
+        #     result['macd'] = result['macd'].dropna()
+        # else:
         result['rsi'] = result['rsi'].fillna(0)
         result['stochastic'] = result['stochastic'].fillna(0)
+        result['adr'] = result['adr'].fillna(0)
+        result['macd'] = result['macd'].fillna(0)
         result['status'] = True
 
     except Exception as X:
+        raise Exception(X)
+        # pdb.set_trace()
         result['error'] = f"There was an error in the execution: {X}"
         result['status'] = False
 
@@ -592,36 +698,55 @@ def store_full_data(stock_details:dict,
                                   operation_data['adr'].iloc[i],operation_data['macd'].iloc[i],
                                   operation_data['stochastic'].iloc[i]):
 
-                f_stoch = 'HIGH' if operation_data['stochastic'].iloc[i]['k_fast'] > 20.00 else 'LOW'
-                f_rsi = 'HIGH' if operation_data['rsi'].iloc[i]['operation_data'] > 70.00 else 'LOW'
-                f_macd = 'HIGH' if operation_data['macd'].iloc[i]['macd'] > operation_data['macd'].iloc[i]['signal'] \
-                    else 'LOW'
-                bullet = 'START' if f_stoch == f_rsi == f_macd == 'HIGH' else 'STOP' \
-                    if f_stoch == f_rsi == f_macd == 'LOW' else 'PAUSE'
+                f_stoch = 'COMPRA' if operation_data['stochastic'].iloc[i]['k'] > 20.00 else 'VENTA'
+                f_rsi = 'COMPRA' if operation_data['rsi'].iloc[i]['operation_data'] > 70.00 else 'VENTA'
+                f_macd = 'COMPRA' if operation_data['macd'].iloc[i]['macd'] > operation_data['macd'].iloc[i]['signal'] \
+                    else 'VENTA'
+                bullet = 'ROJO' if f_stoch == f_rsi == f_macd == 'VENTA' else 'AZUL' \
+                    if f_stoch == f_rsi == f_macd == 'COMPRA' else 'BLANCO'
 
                 record, created = HistoricalData.objects.get_or_create(
                                                 stock = stock,
                                                 api_date=operation_data['olhcv'].iloc[i]['datetime']
 
                                                         )
+                rsi = float(operation_data['rsi'].iloc[i]['operation_data'])
+                signal = float(operation_data['macd'].iloc[i]['signal'])
+                macd = float(operation_data['macd'].iloc[i]['macd'])
+                adr = float(operation_data['adr'].iloc[i]['operation_data'])
+                k = float(operation_data['stochastic'].iloc[i]['k'])
                 record.open = float(operation_data['olhcv'].iloc[i]['open'])
                 record.high = float(operation_data['olhcv'].iloc[i]['high'])
                 record.low = float(operation_data['olhcv'].iloc[i]['low'])
                 record.close = float(operation_data['olhcv'].iloc[i]['close'])
                 record.volume = float(operation_data['olhcv'].iloc[i]['volume'])
-                record.rsi = float(operation_data['rsi'].iloc[i]['operation_data'])
-                record.adr = float(operation_data['adr'].iloc[i]['operation_data'])
-                record.k_slow = float(operation_data['stochastic'].iloc[i]['k_slow'])
-                record.k_fast = float(operation_data['stochastic'].iloc[i]['k_fast'])
-                record.macd = float(operation_data['macd'].iloc[i]['macd'])
-                record.signal = float(operation_data['macd'].iloc[i]['signal'])
-                record.f_stoch = f_stoch
-                record.f_rsi = f_rsi
-                record.f_macd = f_macd
-                record.bullet = bullet
-                # print(i)
                 if not created:
+                    if rsi > 0.00 and adr >0.00 and k >0.00 and macd > 0.00 and signal > 0.00:
+                        record.rsi = rsi
+                        record.adr = adr
+                        # record.k_slow = float(operation_data['stochastic'].iloc[i]['k_slow'])
+                        # record.k_fast = float(operation_data['stochastic'].iloc[i]['k_fast'])
+                        record.k = k
+                        record.macd = macd
+                        record.signal = signal
+                        record.f_stoch = f_stoch
+                        record.f_rsi = f_rsi
+                        record.f_macd = f_macd
+                        record.bullet = bullet
+                    # print(i)
                     record.updated_at = datetime.now()
+                else:
+                    record.rsi = rsi
+                    record.adr = adr
+                    # record.k_slow = float(operation_data['stochastic'].iloc[i]['k_slow'])
+                    # record.k_fast = float(operation_data['stochastic'].iloc[i]['k_fast'])
+                    record.k = k
+                    record.macd = macd
+                    record.signal = signal
+                    record.f_stoch = f_stoch
+                    record.f_rsi = f_rsi
+                    record.f_macd = f_macd
+                    record.bullet = bullet
 
                 # pdb.set_trace()
                 record.save()
@@ -864,6 +989,8 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
     result = {'error': "",
               'status': False
               }
+    window = 30
+
     try:
         dates = generate_time_intervals_for_api_query()
         print(dates)
@@ -886,10 +1013,15 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
                 if(start_date.year == end_date.year and
                        Stock.listed_last_historical_data_fetch(symbol=symbol, refresh_time=start_date)):
                     stored = True
-                    obj = Stock.objects.get(symbol=symbol)
-                    data_container['model_data'] = HistoricalData.objects.filter(stock=obj.id).order_by('-api_date')[:14]
-                    data_container['model_data'] = [record for record in data_container['model_data']]
-                    data_container['model_data'].reverse()
+                    # obj = Stock.objects.get(symbol=symbol)
+                    records = get_last_records(symbol=symbol,first_record_date=data_container['api_data'][0]['datetime'],
+                                                                    window_number=window)
+                    if not records['status']:
+                        raise  Exception(records['error'])
+                    data_container['model_data'] = records['data']
+                    # data_container['model_data'] = HistoricalData.objects.filter(stock=obj.id).order_by('-api_date')[:14]
+                    # data_container['model_data'] = [record for record in data_container['model_data']]
+                    # data_container['model_data'].reverse()
                 # pdb.set_trace()
                 operations = generate_statistical_indicators(data=data_container, stored=stored)
                 if not operations['status']:

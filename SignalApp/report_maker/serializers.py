@@ -11,6 +11,6 @@ class StockSerializer(ModelSerializer):
 class HistoricalDataSerializer(ModelSerializer):
     class Meta:
         model = HistoricalData
-        fields = ['o','h','l',
-                  'c','v','datetime']
+        fields = ['open','high','low',
+                  'close','volume','datetime']
 

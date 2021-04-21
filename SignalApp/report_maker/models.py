@@ -83,6 +83,7 @@ class HistoricalData(BaseModel):
     volume = models.FloatField(default=0.00)
     k_slow = models.FloatField(default=0.00)
     k_fast = models.FloatField(default=0.00)
+    k = models.FloatField(default=0.00)
     macd = models.FloatField(default=0.00)
     signal = models.FloatField(default=0.00)
     f_stoch = models.CharField(max_length=20, default=choices[-1])
