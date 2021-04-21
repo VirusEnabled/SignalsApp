@@ -10,6 +10,7 @@ from .serializers import *
 import calendar
 # from talipp.indicators import RSI, MACD, Stoch
 from technical_indicators_lib import RSI, MACD,StochasticKAndD
+from pandas_ta import rsi, stoch, macd
 import numpy as np
 
 DATA_API_OBJ = APIDataHandler()
@@ -306,6 +307,34 @@ class RSIndicator(RSI):
 
         return rsi_values.dropna()
 
+class Stoch(StochasticKAndD):
+    def __init__(self):
+        super().__init__()
+
+    def get_value_df(self, df: pd.DataFrame, time_period: int = 14):
+        """
+        Get The expected indicator in a pandas dataframe.
+
+        Args:
+            df(pandas.DataFrame): pandas Dataframe with high, low and close values\n
+            time_period(int): look back time period \n
+
+        Returns:
+            pandas.DataFrame: new pandas dataframe adding d and k as new columns,
+            preserving the columns which already exists\n
+        """
+
+        df["highest high"] = df["high"].rolling(
+            window=time_period).max()
+        df["lowest low"] = df["low"].rolling(
+            window=time_period).min()
+        df["k"] = 100 * ((df["close"].astype(float) - df["lowest low"].astype(float)) /
+                              (df["highest high"].astype(float) - df["lowest low"]).astype(float))
+        df["d"] = df["k"].rolling(window=3).mean()
+
+        df = df.drop(["highest high", "lowest low"], axis=1)
+        return df
+
 
 def get_last_records(symbol:str, first_record_date: str ,window_number:int=14):
     """
@@ -334,33 +363,6 @@ def get_last_records(symbol:str, first_record_date: str ,window_number:int=14):
 
     return result
 
-class Stoch(StochasticKAndD):
-    def __init__(self):
-        super().__init__()
-
-    def get_value_df(self, df: pd.DataFrame, time_period: int = 14):
-        """
-        Get The expected indicator in a pandas dataframe.
-
-        Args:
-            df(pandas.DataFrame): pandas Dataframe with high, low and close values\n
-            time_period(int): look back time period \n
-
-        Returns:
-            pandas.DataFrame: new pandas dataframe adding d and k as new columns,
-            preserving the columns which already exists\n
-        """
-
-        df["highest high"] = df["high"].rolling(
-            window=time_period).max()
-        df["lowest low"] = df["low"].rolling(
-            window=time_period).min()
-        df["k"] = 100 * ((df["close"].astype(float) - df["lowest low"].astype(float)) /
-                              (df["highest high"].astype(float) - df["lowest low"]).astype(float))
-        df["k"] = df["k"].rolling(window=3).mean()
-
-        df = df.drop(["highest high", "lowest low"], axis=1)
-        return df
 
 def calculate_macd(data: pd.DataFrame) -> pd.DataFrame:
     """
@@ -370,9 +372,13 @@ def calculate_macd(data: pd.DataFrame) -> pd.DataFrame:
     """
     ema12 = data['close'].ewm(span=8, adjust=False).mean()
     ema26 = data['close'].ewm(span=21, adjust=False).mean()
-    macd = ema12 - ema26
-    signal = macd.ewm(span=5, adjust=False).mean()
-    result = pd.DataFrame(data={'macd': macd, 'signal':signal,'datetime':data['datetime']})
+    macdx = ema12 - ema26
+    signal = macdx.ewm(span=5, adjust=False).mean()
+    resultant_data = macd(close=data['close'].astype(float),fast=8, slow=21,signal=5)
+    # result = pd.DataFrame(data={'macd': macdx, 'signal':signal,'datetime':data['datetime']})
+    result = pd.DataFrame(data={'macd': resultant_data['MACD_8_21_5'],
+                                'signal':resultant_data['MACDs_8_21_5'],
+                                'datetime':data['datetime']})
     return result
 
 
@@ -381,6 +387,7 @@ def calculate_adr(dt: pd.DataFrame) -> pd.DataFrame:
     generates the calulation for the ADR
     :param data:
     :return: pandas DataFrame
+
     """
     data = dt.copy()
     high = data['high'].astype(dtype=float)
@@ -389,6 +396,7 @@ def calculate_adr(dt: pd.DataFrame) -> pd.DataFrame:
     data['tr0'] = abs(high - low)
     data['tr1'] = abs(high - close.shift())
     data['tr2'] = abs(low - close.shift())
+    tr = data[['tr0', 'tr1', 'tr2']].max(axis=1)
     tr = data[['tr0', 'tr1', 'tr2']].max(axis=1)
     adr = lambda values, n: values.ewm(alpha=1/n, adjust=False).mean()
     return adr(tr,14)
@@ -402,19 +410,21 @@ def calculate_rsi(data: pd.DataFrame) -> pd.Series:
     """
     window_length = 14  # this should change based on the needs
     # rsi_holder= RSIndicator()
-    # rsi = rsi_holder.get_value_list(close_values=data['close'],
+    # rsix = rsi_holder.get_value_list(close_values=data['close'],
     #                                 time_period=window_length)
-    delta = data['close'].astype(dtype=float).diff()
-    up = delta.clip(lower=0)
-    down = -1 * delta.clip(upper=0)
-    ema_up = up.ewm(com=window_length, adjust=False).mean()
-    ema_down = down.ewm(com=window_length, adjust=False).mean()
-    rs = ema_up / ema_down
-    rsi = 100.0 - (100.0 / (1.0 + rs))
+    rsix = rsi(close=data['close'].astype(float),
+               length=window_length)
+    # delta = data['close'].astype(dtype=float).diff()
+    # up = delta.clip(lower=0)
+    # down = -1 * delta.clip(upper=0)
+    # ema_up = up.ewm(com=window_length, adjust=False).mean()
+    # ema_down = down.ewm(com=window_length, adjust=False).mean()
+    # rs = ema_up / ema_down
+    # rsi = 100.0 - (100.0 / (1.0 + rs))
+    # # rsi = rsi.dropna()
     # rsi = rsi.dropna()
-    rsi = rsi.dropna().clip(lower=1)
-    print(rsi)
-    return rsi
+    # print(rsi)
+    return rsix
 
 
 def calculate_stochastic(data: pd.DataFrame) -> pd.DataFrame:
@@ -441,6 +451,11 @@ def calculate_stochastic(data: pd.DataFrame) -> pd.DataFrame:
     d = 3 # 3 days of SMA which come from K
     indicator = Stoch()
     stochastic = indicator.get_value_df(df=data, time_period=k)
+    # final_stochastic = stoch(high=data['high'].astype(float),
+    #                          low=data['low'].astype(float),
+    #                          close=data['close'].astype(float),
+    #                          k=k,
+    #                          d=d)
 
     # stochastic = data.copy().dropna()
     # low_min = stochastic['close'].rolling(window=k).min().dropna()
@@ -459,6 +474,7 @@ def calculate_stochastic(data: pd.DataFrame) -> pd.DataFrame:
     # # Slow Stochastic
     # stochastic['k_slow'] = stochastic["d_fast"]
     # stochastic['d_slow'] = stochastic['k_slow'].rolling(window=d).mean()
+    # return final_stochastic
     return stochastic
 
 
@@ -502,9 +518,10 @@ def generate_statistical_indicators(data: dict, stored:bool =False) -> dict:
         result['adr'] = result['adr'].fillna(0)
         result['macd'] = result['macd'].fillna(0)
         result['status'] = True
+        # pdb.set_trace()
 
     except Exception as X:
-        raise Exception(X)
+        # raise Exception(X)
         # pdb.set_trace()
         result['error'] = f"There was an error in the execution: {X}"
         result['status'] = False
@@ -707,8 +724,9 @@ def store_full_data(stock_details:dict,
 
                 record, created = HistoricalData.objects.get_or_create(
                                                 stock = stock,
-                                                api_date=operation_data['olhcv'].iloc[i]['datetime']
-
+                                                api_date=datetime.fromisoformat(
+                                                    operation_data['olhcv'].iloc[i]['datetime']
+                                                ).astimezone(pytz.timezone('America/New_York'))
                                                         )
                 rsi = float(operation_data['rsi'].iloc[i]['operation_data'])
                 signal = float(operation_data['macd'].iloc[i]['signal'])
@@ -720,6 +738,7 @@ def store_full_data(stock_details:dict,
                 record.low = float(operation_data['olhcv'].iloc[i]['low'])
                 record.close = float(operation_data['olhcv'].iloc[i]['close'])
                 record.volume = float(operation_data['olhcv'].iloc[i]['volume'])
+
                 if not created:
                     if rsi > 0.00 and adr >0.00 and k >0.00 and macd > 0.00 and signal > 0.00:
                         record.rsi = rsi
@@ -915,7 +934,7 @@ def generate_time_intervals_for_api_query():
     final_result = {}
     try:
         today = get_current_ny_time(date_time=datetime.today())
-        _start_date = datetime(year=datetime.now().year-1,month=1,day=4,hour=9,minute=30)
+        _start_date = datetime(year=datetime.now().year-2,month=1,day=4,hour=9,minute=30)
         start_date = get_current_ny_time(_start_date)
         end_date = today
         status, result = settings.REDIS_OBJ.get_last_fetched_time()
