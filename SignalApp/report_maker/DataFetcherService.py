@@ -133,7 +133,7 @@ class APIDataHandler(object):
                       # 'end_date': end_date.date().isoformat(),
                       'timezone':'America/New_York',
                       # 'apikey': self.config['twelve_api_key'],
-                      'order':"asc",
+                      # 'order':"asc",
                       }
             definitive_endpoint = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval={interval}&" \
                                   f"apikey={self.config['twelve_api_key']}&start_date={start_date.date().isoformat()}"
