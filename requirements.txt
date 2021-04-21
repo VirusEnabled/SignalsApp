@@ -67,3 +67,5 @@ xlrd
 uwsgi
 talipp
 technical-indicators-lib
+pandas-ta
+
