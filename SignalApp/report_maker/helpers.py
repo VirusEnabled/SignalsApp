@@ -12,8 +12,10 @@ import calendar
 from technical_indicators_lib import RSI, MACD,StochasticKAndD
 from pandas_ta import rsi, stoch, macd
 import numpy as np
-
+import requests as r
 DATA_API_OBJ = APIDataHandler()
+import time
+
 
 
 def generate_candle_sticks_graph(stock_historical_data, stock_details):
@@ -382,7 +384,7 @@ def calculate_macd(data: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
-def calculate_adr(dt: pd.DataFrame) -> pd.DataFrame:
+def calculate_adr(dt: pd.DataFrame) -> pd.Series:
     """
     generates the calulation for the ADR
     :param data:
@@ -397,9 +399,13 @@ def calculate_adr(dt: pd.DataFrame) -> pd.DataFrame:
     data['tr1'] = abs(high - close.shift())
     data['tr2'] = abs(low - close.shift())
     tr = data[['tr0', 'tr1', 'tr2']].max(axis=1)
-    tr = data[['tr0', 'tr1', 'tr2']].max(axis=1)
-    adr = lambda values, n: values.ewm(alpha=1/n, adjust=False).mean()
-    return adr(tr,14)
+    tr = data['tr0']/14
+    # adr = lambda values, n: values.ewm(alpha=1/n, adjust=False).mean()
+    dt['adr'] = data['tr0']/14
+    # print(dt)
+    # pdb.set_trace()
+    return data['tr0']/14
+    # return adr(tr,14)
 
 
 def calculate_rsi(data: pd.DataFrame) -> pd.Series:
@@ -427,7 +433,7 @@ def calculate_rsi(data: pd.DataFrame) -> pd.Series:
     return rsix
 
 
-def calculate_stochastic(data: pd.DataFrame) -> pd.DataFrame:
+def calculate_stochastic(data:pd.DataFrame, **kwargs) -> pd.DataFrame:
     """
     generates the calulation for the STOCHASTIC
         Fast stochastic calculation
@@ -446,16 +452,79 @@ def calculate_stochastic(data: pd.DataFrame) -> pd.DataFrame:
     :param data: dataframe
     :return: dataframe
 
+
+STOCHASTIC
+"meta": {
+        "symbol": "AAPL",
+        "interval": "1h",
+        "currency": "USD",
+        "exchange_timezone": "America/New_York",
+        "exchange": "NASDAQ",
+        "type": "Common Stock",
+        "indicator": {
+            "name": "STOCH - Stochastic Oscillator",
+            "fast_k_period": 14,
+            "slow_k_period": 3,
+            "slow_d_period": 3,
+            "slow_kma_type": "SMA",
+            "slow_dma_type": "SMA"
+        }
+    },
+
     """
-    k = 14 # days of the window
-    d = 3 # 3 days of SMA which come from K
-    indicator = Stoch()
-    stochastic = indicator.get_value_df(df=data, time_period=k)
-    # final_stochastic = stoch(high=data['high'].astype(float),
-    #                          low=data['low'].astype(float),
+    endpoint = f"https://api.twelvedata.com/stoch?symbol={kwargs['symbol']}&interval=1h" \
+               f"&apikey=eb61c42448454dc5b6b6f59dfe6d8072&source=docs&slow_k_period=3" \
+               f"&start_date={kwargs['start_date']}&fast_k_period=14&include_ohlc=true"
+    # headers = {
+    #     "symbol": symbol,
+    #     "interval": "1h",
+    #     "currency": "USD",
+    #     "exchange_timezone": "America/New_York",
+    #     "exchange": "NASDAQ",
+    #     "type": "Common Stock",
+    #     'start_date':kwargs['start_date'],
+    #     "indicator": json.dumps({
+    #         "name": "STOCH - Stochastic Oscillator",
+    #         "fast_k_period": 14,
+    #         "slow_k_period": 3,
+    #         "slow_d_period": 3,
+    #         "slow_kma_type": "SMA",
+    #         "slow_dma_type": "SMA"
+    #     })
+    # }
+    response = r.get(url=endpoint)
+    if response.status_code == 200:
+        response_values = response.json()['values']
+        response_values.reverse()
+        stochastic = pd.DataFrame([
+                                      {
+                                        'k': d['slow_k'],
+                                        'datetime': d['datetime']
+                                       } for d in response_values if float(d['volume']) > 0.00])
+        stochastic['k'] = stochastic['k'].astype(float)
+        time.sleep(10)
+
+    # k = 14 # days of the window
+    # d = 3 # 3 days of SMA which come from K
+    # indicator = Stoch()
+    # stochastic = indicator.get_value_df(df=data,
+    #                                     time_period=k)
+    # low_min = data['close'].rolling(window=k).min().dropna()
+    # high_max = data['close'].rolling(window=k).max().dropna()
+    #
+    #
+    # stochastic = stoch(high=high_max.astype(float),
+    #                          low=low_min.astype(float),
     #                          close=data['close'].astype(float),
     #                          k=k,
-    #                          d=d)
+    #                          d=d
+    #                    )
+    #
+    # stochastic['datetime'] = data['datetime']
+    # stochastic['k'] = stochastic['STOCHk_14_3_3']
+    # stochastic['k'] = stochastic['STOCHd_14_3_3']
+    # pdb.set_trace()
+
 
     # stochastic = data.copy().dropna()
     # low_min = stochastic['close'].rolling(window=k).min().dropna()
@@ -475,10 +544,12 @@ def calculate_stochastic(data: pd.DataFrame) -> pd.DataFrame:
     # stochastic['k_slow'] = stochastic["d_fast"]
     # stochastic['d_slow'] = stochastic['k_slow'].rolling(window=d).mean()
     # return final_stochastic
+    # pdb.set_trace()
+
     return stochastic
 
 
-def generate_statistical_indicators(data: dict, stored:bool =False) -> dict:
+def generate_statistical_indicators(data: dict, stored:bool =False,**kwargs) -> dict:
     """
     generates the 4 statistical
     indicators for the data incoming for the available
@@ -498,7 +569,10 @@ def generate_statistical_indicators(data: dict, stored:bool =False) -> dict:
             final_container = data['model_data'] + data['api_data']
             processed_data = pd.DataFrame(data=final_container).dropna()
 
-        result = dict(stochastic=calculate_stochastic(data=processed_data),
+        result = dict(stochastic=calculate_stochastic(data=processed_data,
+                                                      symbol=kwargs['symbol'],
+                                                      start_date=kwargs['start_date']
+                                                      ),
                       rsi=to_data_frame(operation_data=calculate_rsi(processed_data),
                                         time_data=processed_data['datetime']),
                       macd=calculate_macd(processed_data),
@@ -1077,7 +1151,9 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
                     # data_container['model_data'] = [record for record in data_container['model_data']]
                     # data_container['model_data'].reverse()
                 # pdb.set_trace()
-                operations = generate_statistical_indicators(data=data_container, stored=stored)
+                operations = generate_statistical_indicators(data=data_container, stored=stored,
+                                                             symbol=symbol,
+                                                             start_date=start_date)
                 if not operations['status']:
                     raise Exception(operations['error'])
 
