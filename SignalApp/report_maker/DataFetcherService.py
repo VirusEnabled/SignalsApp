@@ -126,14 +126,13 @@ class APIDataHandler(object):
         result = {}
         try:
             endpoint = f"{self.api_root_endpoints['twelve_api']}time_series"
-            params = {
-                        # 'symbol': symbol,
-                      # 'interval': '1h' if not interval else interval,
-                      # 'start_date ': start_date.date().isoformat(),
-                      # 'end_date': end_date.date().isoformat(),
+            params = {'symbol': symbol,
+                      'interval': '1h' if not interval else interval,
+                      'start_date ': start_date.date().isoformat(),
+                      'end_date': end_date.date().isoformat(),
                       'timezone':'America/New_York',
-                      # 'apikey': self.config['twelve_api_key'],
-                      # 'order':"asc",
+                      'apikey': self.config['twelve_api_key'],
+                      'order':"asc",
                       }
             definitive_endpoint = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval={interval}&" \
                                   f"apikey={self.config['twelve_api_key']}&start_date={start_date.date().isoformat()}"
@@ -239,25 +238,41 @@ class APIDataHandler(object):
         finally:
             return flag, result
 
-    def get_all_historical_data_info(self, start_date: date =None,
-                            end_date: date =None):
+    def get_all_historical_data_info(self, start_date: date,
+                                     symbols: list,
+                                     indicators: list) -> dict:
         """
-        loads all of the historical data
-        for all stocks based on the dates given
-        :yields: dict
+        gets all of the data related to the given symbols
+        and indicators
+        :param start_date: when to start parsing from
+        :param symbols: list: list of symbols to fetch from
+        :param indicators: list: list of indicators to get from.
+        :return: dict of all items gathered or full or errors.
         """
-        flag =  False
-        historical_data = None
-        markets = self.load_markets()
-
+        result = {}
         try:
-            available_symbols = [obj['symbol'] for obj in markets]
-            for symbol in available_symbols:
-                yield self.get_historical_data(symbol, start_date=start_date, end_date=end_date)
+            endpoint = f"{self.api_root_endpoints['twelve_api']}complex_data?" \
+                       f"apikey={self.config['twelve_api_key']}&start_date={start_date.isoformat()}"
+            request_body = {
+                'symbols': symbols,
+                'intervals':['1h'],
+                'methods': ['time_series'] + indicators
+            }
+            response = req.post(endpoint, json=request_body, headers=self._headers)
+            if isinstance(response.json()['data'], list):
+                result['status'] = True
+                result['data'] = response.json()['data']
+            else:
+                # and 'code' not in response.json()['data'].keys()
+                raise Exception("".join(response.json()['data']))
 
         except Exception as X:
-            historical_data = f"There was an error{X}"
-            yield historical_data
+            result['status'] = False
+            result['error'] = f"There was an error: {X}"
+
+        return result
+
+
 
     def save_market_list(self):
         """
