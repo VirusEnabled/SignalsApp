@@ -809,19 +809,20 @@ def store_full_data(stock_details:dict,
         if created:
             stock.stock_detail = json.dumps(stock_details)
             stock.save()
-        print(len(operation_data['olhcv']),
-              len(operation_data['rsi']),
-              len(operation_data['macd']),
-              len(operation_data['adr']),
-              len(operation_data['stochastic']))
+        # print(len(operation_data['olhcv']),
+        #       len(operation_data['rsi']),
+        #       len(operation_data['macd']),
+        #       len(operation_data['adr']),
+        #       len(operation_data['stochastic']))
 
         for i in range(len(operation_data['olhcv'])):
             if evaluate_integrity(operation_data['olhcv'].iloc[i],operation_data['rsi'].iloc[i],
                                   operation_data['adr'].iloc[i],operation_data['macd'].iloc[i],
                                   operation_data['stochastic'].iloc[i]):
+
                 # pdb.set_trace()
                 f_stoch = 'COMPRA' if operation_data['stochastic'].iloc[i]['k'] > 20.00 else 'VENTA'
-                f_rsi = 'COMPRA' if operation_data['rsi'].iloc[i]['operation_data'] > 70.00 else 'VENTA'
+                f_rsi = 'COMPRA' if operation_data['rsi'].iloc[i]['operation_data'] > 50.00 else 'VENTA'
                 f_macd = 'COMPRA' if operation_data['macd'].iloc[i]['macd'] > operation_data['macd'].iloc[i]['signal'] \
                     else 'VENTA'
                 bullet = 'ROJO' if f_stoch == f_rsi == f_macd == 'VENTA' else 'AZUL' \
