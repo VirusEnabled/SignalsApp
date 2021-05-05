@@ -134,12 +134,14 @@ class APIDataHandler(object):
                       'apikey': self.config['twelve_api_key'],
                       'order':"asc",
                       }
+            start_date = start_date - timedelta(days=1) if start_date.date() == datetime.now().date() else start_date
             definitive_endpoint = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval={interval}&" \
                                   f"apikey={self.config['twelve_api_key']}&start_date={start_date.date().isoformat()}"
             print(definitive_endpoint)
             response = req.get(definitive_endpoint)
             # response = req.get(endpoint, params=params, headers=self._headers)
             response_data = response.json()
+            print(response_data.keys())
             if 'values' not in response_data.keys():
                 result = {'error': f"The data related to the symbol: {symbol} was not found, try a different one \n "
                                    f"{response_data['message']}"}
