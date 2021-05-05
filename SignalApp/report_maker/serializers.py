@@ -12,5 +12,5 @@ class HistoricalDataSerializer(ModelSerializer):
     class Meta:
         model = HistoricalData
         fields = ['open','high','low',
-                  'close','volume','datetime']
+                  'close','volume','datetime','k']
 

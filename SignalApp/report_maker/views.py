@@ -199,7 +199,7 @@ class Dashboard(TemplateView, LoginRequiredMixin):
             today = current_date.strftime("%Y-%m-%d %H:%m")
             # a_year_back = (datetime.today() - timedelta(days=365)).strftime("%Y-%m-%d %H:%m")
             start_year =(datetime(current_date.year,1,
-                                  current_date.day)+timedelta(days=2)).strftime("%Y-%m-%d %H:%m")
+                                  current_date.day)+timedelta(days=2)).strftime("%Y-%m-%d %H:%m:%S")
 
             # need to change this to a different method.
             saved, value = settings.REDIS_OBJ.save_graph_refresh_time(user=request.user, symbol=data['stock'],

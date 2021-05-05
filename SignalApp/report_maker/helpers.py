@@ -433,7 +433,7 @@ def calculate_rsi(data: pd.DataFrame) -> pd.Series:
     return rsix
 
 
-def calculate_stochastic(data:pd.DataFrame, **kwargs) -> pd.DataFrame:
+def calculate_stochastic(data:pd.DataFrame ,**kwargs) -> pd.DataFrame:
     """
     generates the calulation for the STOCHASTIC
         Fast stochastic calculation
@@ -472,9 +472,12 @@ STOCHASTIC
     },
 
     """
+    # print(kwargs)
+    # pdb.set_trace()
+    stored = kwargs['stored']
     endpoint = f"https://api.twelvedata.com/stoch?symbol={kwargs['symbol']}&interval=1h" \
                f"&apikey=eb61c42448454dc5b6b6f59dfe6d8072&source=docs&slow_k_period=3" \
-               f"&start_date={kwargs['start_date']}&fast_k_period=14&include_ohlc=true"
+               f"&start_date={kwargs['start_date'].date()}&fast_k_period=14&include_ohlc=true"
     # headers = {
     #     "symbol": symbol,
     #     "interval": "1h",
@@ -493,16 +496,28 @@ STOCHASTIC
     #     })
     # }
     response = r.get(url=endpoint)
-    if response.status_code == 200:
+    response_data = response.json()
+    if response_data['status'] == 'ok':
+        # pdb.set_trace()
         response_values = response.json()['values']
         response_values.reverse()
+        if stored:
+            response_values = kwargs['model_data'] + response_values
         stochastic = pd.DataFrame([
                                       {
-                                        'k': d['slow_k'],
+                                        'k': d['slow_k' if 'slow_k' in d.keys() else 'k'],
                                         'datetime': d['datetime']
                                        } for d in response_values if float(d['volume']) > 0.00])
         stochastic['k'] = stochastic['k'].astype(float)
-        time.sleep(10)
+    else:
+        raise Exception(response_data['message'])
+        # kwargs['start_date'] = kwargs['start_date'] - timedelta(days=1)
+        # return calculate_stochastic(data=data,
+        #                             stored=stored,
+        #                             symbol=kwargs['symbol'],
+        #                             start_date=kwargs['start_date'],
+        #                             model_data=kwargs['model_data'] if stored else None,)
+    time.sleep(7)
 
     # k = 14 # days of the window
     # d = 3 # 3 days of SMA which come from K
@@ -568,10 +583,12 @@ def generate_statistical_indicators(data: dict, stored:bool =False,**kwargs) -> 
 
             final_container = data['model_data'] + data['api_data']
             processed_data = pd.DataFrame(data=final_container).dropna()
-
+        # print(stored)
         result = dict(stochastic=calculate_stochastic(data=processed_data,
+                                                      stored=stored,
                                                       symbol=kwargs['symbol'],
-                                                      start_date=kwargs['start_date']
+                                                      start_date=kwargs['start_date'],
+                                                      model_data=data['model_data'] if stored else None,
                                                       ),
                       rsi=to_data_frame(operation_data=calculate_rsi(processed_data),
                                         time_data=processed_data['datetime']),
@@ -602,7 +619,7 @@ def generate_statistical_indicators(data: dict, stored:bool =False,**kwargs) -> 
 
     except Exception as X:
         # raise Exception(X)
-        # pdb.set_trace()
+        pdb.set_trace()
         result['error'] = f"There was an error in the execution: {X}"
         result['status'] = False
 
@@ -741,8 +758,8 @@ def clean_stock_datetime(date_list: pd.Series) -> pd.Series:
                               month=date_eval.month,
                               day=date_eval.day,
                               hour=date_eval.hour,
-                              minute=date_eval.minute+30,
-                              second=date_eval.second).isoformat()
+                              minute=30,
+                              second=date_eval.second).strftime("%Y-%m-%d %H:%m:%S")
     return date_list
 
 def process_file_data(csvfile, delimiter=";"):
@@ -809,11 +826,11 @@ def store_full_data(stock_details:dict,
         if created:
             stock.stock_detail = json.dumps(stock_details)
             stock.save()
-        # print(len(operation_data['olhcv']),
-        #       len(operation_data['rsi']),
-        #       len(operation_data['macd']),
-        #       len(operation_data['adr']),
-        #       len(operation_data['stochastic']))
+        print(len(operation_data['olhcv']),
+              len(operation_data['rsi']),
+              len(operation_data['macd']),
+              len(operation_data['adr']),
+              len(operation_data['stochastic']))
 
         for i in range(len(operation_data['olhcv'])):
             if evaluate_integrity(operation_data['olhcv'].iloc[i],operation_data['rsi'].iloc[i],
@@ -1063,6 +1080,12 @@ def generate_time_intervals_for_api_query():
                 f = final_result.pop('end_date')
                 final_result['start_date'] = f
                 final_result['end_date'] = s
+                # pdb.set_trace()
+                # # update to control issue with the dates and stuffs
+                # if final_result['start_date'].date() == datetime.today().date() \
+                #         and (final_result['start_date'].hour > 18 or final_result['start_date'].hour < 9):
+                #     final_result['prior_start_date'] = final_result['start_date']
+                #     final_result['start_date'] -= timedelta(days=1)
 
         status, error = settings.REDIS_OBJ.refresh_last_fetched_time(new_refresh_time=datetime.fromisoformat(
             end_date).isoformat())
@@ -1126,7 +1149,9 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
         if not dates['status']:
             raise Exception(dates['error'])
 
-        start_date = dates['start_date']
+        start_date = dates['start_date']-timedelta(days=1) if dates['start_date'].date() == datetime.today().date() \
+                        and (dates['start_date'].hour > 18 or dates['start_date'].hour < 9) else dates['start_date']
+
         end_date = dates['end_date']
 
         for symbol in symbols:
@@ -1142,7 +1167,8 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
                        Stock.listed_last_historical_data_fetch(symbol=symbol, refresh_time=start_date)):
                     stored = True
                     # obj = Stock.objects.get(symbol=symbol)
-                    records = get_last_records(symbol=symbol,first_record_date=data_container['api_data'][0]['datetime'],
+                    records = get_last_records(symbol=symbol,
+                                               first_record_date=data_container['api_data'][0]['datetime'],
                                                                     window_number=window)
                     print(status, symbol, dates)
                     if not records['status']:
@@ -1152,6 +1178,7 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
                     # data_container['model_data'] = [record for record in data_container['model_data']]
                     # data_container['model_data'].reverse()
                 # pdb.set_trace()
+
                 operations = generate_statistical_indicators(data=data_container, stored=stored,
                                                              symbol=symbol,
                                                              start_date=start_date)
@@ -1171,6 +1198,7 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
     except Exception as X:
         result['status'] = False
         result['error'] = f"{X}"
+        pdb.set_trace()
 
     finally:
         return result
