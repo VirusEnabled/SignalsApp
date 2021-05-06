@@ -395,17 +395,20 @@ def calculate_adr(dt: pd.DataFrame) -> pd.Series:
     high = data['high'].astype(dtype=float)
     low = data['low'].astype(dtype=float)
     close = data['close'].astype(dtype=float)
-    data['tr0'] = abs(high - low)
-    data['tr1'] = abs(high - close.shift())
-    data['tr2'] = abs(low - close.shift())
-    tr = data[['tr0', 'tr1', 'tr2']].max(axis=1)
-    # tr = data['tr0']/14
-    adr = lambda values, n: values.ewm(alpha=1/n, adjust=False).mean()
-    dt['adr'] = data['tr0']/14
+    # data['tr0'] = abs(high - low)
+    # data['tr1'] = abs(high - close.shift())
+    # data['tr2'] = abs(low - close.shift())
+    # tr = data[['tr0', 'tr1', 'tr2']].max(axis=1)
+    # # tr = data['tr0']/14
+    # adr = lambda values, n: values.ewm(alpha=1/n, adjust=False).mean()
+    # dt['adr'] = data['tr0']/14
     # print(dt)
     #
     # return data['tr1']/14
-    return adr(tr,14)
+    # return adr(tr,14)
+    window = 14
+    adr = sma(high,window) - sma(low,window)
+    return adr
 
 
 def calculate_rsi(data: pd.DataFrame) -> pd.Series:
