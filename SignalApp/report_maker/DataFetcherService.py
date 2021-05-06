@@ -134,10 +134,17 @@ class APIDataHandler(object):
                       'apikey': self.config['twelve_api_key'],
                       'order':"asc",
                       }
-            start_date = start_date - timedelta(days=1) if start_date.date() == datetime.now().date() else start_date
-            definitive_endpoint = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval={interval}&" \
-                                  f"apikey={self.config['twelve_api_key']}&start_date={start_date.date().isoformat()}"
-            print(definitive_endpoint)
+            # start_date = start_date - timedelta(days=1) if start_date.date() == datetime.now().date() else start_date
+            # definitive_endpoint = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval={interval}&" \
+            #                       f"apikey={self.config['twelve_api_key']}" \
+            #                       f"&source=docs&start_date={start_date.date().isoformat()}"
+
+            definitive_endpoint = f"https://api.twelvedata.com/stoch?symbol={symbol}&interval=1h&" \
+                                  f"apikey={self.config['twelve_api_key']}" \
+                                  f"&source=docs&start_date={start_date.date().isoformat()}&" \
+                                  f"include_ohlc=true&slow_k_period=3&fast_k_period=14"
+
+            print(definitive_endpoint, start_date.date().isoformat())
             response = req.get(definitive_endpoint)
             # response = req.get(endpoint, params=params, headers=self._headers)
             response_data = response.json()
@@ -150,11 +157,23 @@ class APIDataHandler(object):
             else:
 
                 flag = True
+                print(f"RECORDS: {len(response_data['values'])}")
                 result = {'stock_details':response_data['meta'],
-                          "data": response_data['values']
+                          "data": [
+                              {'open':record['open'],
+                               'high': record['high'],
+                               'low': record['low'],
+                               'close': record['close'],
+                               'volume': record['volume'],
+                               'k': record['slow_k'],
+                               'datetime': record['datetime'],
+                               }
+                           for record in response_data['values']
+                              if float(record['volume']) > 0.00
+                              ]
                           }
                 result['data'].reverse()
-                result['data'] = [value for value in result['data'] if float(value['volume']) > 0.00]
+                # result['data'] = [value for value in result['data'] if float(value['volume']) > 0.00]
 
         except json.JSONDecodeError as JS:
             flag = False

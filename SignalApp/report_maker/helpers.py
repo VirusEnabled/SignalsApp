@@ -10,7 +10,7 @@ from .serializers import *
 import calendar
 # from talipp.indicators import RSI, MACD, Stoch
 from technical_indicators_lib import RSI, MACD,StochasticKAndD
-from pandas_ta import rsi, stoch, macd
+from pandas_ta import rsi, stoch, macd,sma
 import numpy as np
 import requests as r
 DATA_API_OBJ = APIDataHandler()
@@ -85,7 +85,7 @@ def generate_live_graph(stock_data:pd.DataFrame, stock_details, option: str='olh
     :return: plotly graph
     """
     # status, calendar = DATA_API_OBJ.get_market_calendar("2020")
-    # pdb.set_trace()
+    #
     df = stock_data
     graph =  make_subplots(specs=[[{"secondary_y": True}]])
 
@@ -198,7 +198,7 @@ def update_graph(graph, new_values, option):
         if option == "rsi":
             graph.add_trace(p_go.Scatter(x=graph.data[0]['x'],y=new_values),
                   secondary_y=False)
-            # pdb.set_trace()
+            #
             graph.update_traces(name=option.title(), selector=dict(type='scatter'))
             result = graph
             status = True
@@ -206,7 +206,7 @@ def update_graph(graph, new_values, option):
         elif option == 'stochastic':
             graph.add_trace(p_go.Scatter(x=new_values['datetime'], y=new_values['d_fast']),
                             secondary_y=False)
-            # pdb.set_trace()
+            #
             graph.update_traces(name=option.title(), selector=dict(type='scatter'))
             result = graph
             status = True
@@ -399,13 +399,13 @@ def calculate_adr(dt: pd.DataFrame) -> pd.Series:
     data['tr1'] = abs(high - close.shift())
     data['tr2'] = abs(low - close.shift())
     tr = data[['tr0', 'tr1', 'tr2']].max(axis=1)
-    tr = data['tr0']/14
-    # adr = lambda values, n: values.ewm(alpha=1/n, adjust=False).mean()
+    # tr = data['tr0']/14
+    adr = lambda values, n: values.ewm(alpha=1/n, adjust=False).mean()
     dt['adr'] = data['tr0']/14
     # print(dt)
-    # pdb.set_trace()
-    return data['tr0']/14
-    # return adr(tr,14)
+    #
+    # return data['tr1']/14
+    return adr(tr,14)
 
 
 def calculate_rsi(data: pd.DataFrame) -> pd.Series:
@@ -473,51 +473,59 @@ STOCHASTIC
 
     """
     # print(kwargs)
-    # pdb.set_trace()
+    #
+    # endpoint = f"https://api.twelvedata.com/stoch?symbol={kwargs['symbol']}&interval=1h" \
+    #            f"&apikey=eb61c42448454dc5b6b6f59dfe6d8072&source=docs&slow_k_period=3" \
+    #            f"&start_date={kwargs['start_date'].date()}&fast_k_period=14&include_ohlc=true"
+    # # headers = {
+    # #     "symbol": symbol,
+    # #     "interval": "1h",
+    # #     "currency": "USD",
+    # #     "exchange_timezone": "America/New_York",
+    # #     "exchange": "NASDAQ",
+    # #     "type": "Common Stock",
+    # #     'start_date':kwargs['start_date'],
+    # #     "indicator": json.dumps({
+    # #         "name": "STOCH - Stochastic Oscillator",
+    # #         "fast_k_period": 14,
+    # #         "slow_k_period": 3,
+    # #         "slow_d_period": 3,
+    # #         "slow_kma_type": "SMA",
+    # #         "slow_dma_type": "SMA"
+    # #     })
+    # # }
+    # response = r.get(url=endpoint)
+    # response_data = response.json()
+    # if response_data['status'] == 'ok':
+    #     response_values = response_data['values']
+    #     response_values.reverse()
+    #     if stored:
+    #         #
+    #         response_values = kwargs['full_data']['model_data'] + response_values
+    #     stochastic = pd.DataFrame([
+    #                                   {
+    #                                     'k': d['slow_k' if 'slow_k' in d.keys() else 'k'],
+    #                                     'datetime': d['datetime']
+    #                                    } for d in response_values if float(d['volume']) > 0.00])
+    #     stochastic['k'] = stochastic['k'].astype(float)
+    # else:
+    #     raise Exception(response_data['message'])
+    #     # kwargs['start_date'] = kwargs['start_date'] - timedelta(days=1)
+    #     # return calculate_stochastic(data=data,
+    #     #                             stored=stored,
+    #     #                             symbol=kwargs['symbol'],
+    #     #                             start_date=kwargs['start_date'],
+    #     #                             model_data=kwargs['model_data'] if stored else None,)
+    time.sleep(15)
     stored = kwargs['stored']
-    endpoint = f"https://api.twelvedata.com/stoch?symbol={kwargs['symbol']}&interval=1h" \
-               f"&apikey=eb61c42448454dc5b6b6f59dfe6d8072&source=docs&slow_k_period=3" \
-               f"&start_date={kwargs['start_date'].date()}&fast_k_period=14&include_ohlc=true"
-    # headers = {
-    #     "symbol": symbol,
-    #     "interval": "1h",
-    #     "currency": "USD",
-    #     "exchange_timezone": "America/New_York",
-    #     "exchange": "NASDAQ",
-    #     "type": "Common Stock",
-    #     'start_date':kwargs['start_date'],
-    #     "indicator": json.dumps({
-    #         "name": "STOCH - Stochastic Oscillator",
-    #         "fast_k_period": 14,
-    #         "slow_k_period": 3,
-    #         "slow_d_period": 3,
-    #         "slow_kma_type": "SMA",
-    #         "slow_dma_type": "SMA"
-    #     })
-    # }
-    response = r.get(url=endpoint)
-    response_data = response.json()
-    if response_data['status'] == 'ok':
-        response_values = response.json()['values']
-        response_values.reverse()
-        # pdb.set_trace()
-        if stored:
-            response_values = kwargs['model_data'] + response_values
-        stochastic = pd.DataFrame([
-                                      {
-                                        'k': d['slow_k' if 'slow_k' in d.keys() else 'k'],
-                                        'datetime': d['datetime']
-                                       } for d in response_values if float(d['volume']) > 0.00])
-        stochastic['k'] = stochastic['k'].astype(float)
-    else:
-        raise Exception(response_data['message'])
-        # kwargs['start_date'] = kwargs['start_date'] - timedelta(days=1)
-        # return calculate_stochastic(data=data,
-        #                             stored=stored,
-        #                             symbol=kwargs['symbol'],
-        #                             start_date=kwargs['start_date'],
-        #                             model_data=kwargs['model_data'] if stored else None,)
-    time.sleep(20)
+    stochastic = pd.DataFrame([
+                                  {
+                                      'k': d['k'],
+                                      'datetime': d['datetime']
+                                  } for d in kwargs['full_data'] if float(d['volume']) > 0.00])
+    stochastic['k'] = stochastic['k'].astype(float)
+    # print(stochastic)
+    #
 
     # k = 14 # days of the window
     # d = 3 # 3 days of SMA which come from K
@@ -538,7 +546,7 @@ STOCHASTIC
     # stochastic['datetime'] = data['datetime']
     # stochastic['k'] = stochastic['STOCHk_14_3_3']
     # stochastic['k'] = stochastic['STOCHd_14_3_3']
-    # pdb.set_trace()
+    #
 
 
     # stochastic = data.copy().dropna()
@@ -559,7 +567,7 @@ STOCHASTIC
     # stochastic['k_slow'] = stochastic["d_fast"]
     # stochastic['d_slow'] = stochastic['k_slow'].rolling(window=d).mean()
     # return final_stochastic
-    # pdb.set_trace()
+    #
 
     return stochastic
 
@@ -576,11 +584,12 @@ def generate_statistical_indicators(data: dict, stored:bool =False,**kwargs) -> 
     result = {}
     try:
         processed_data = {}
+        final_container = []
         if not stored:
             processed_data = pd.DataFrame(data=data['api_data'])
 
         else:
-
+            #
             final_container = data['model_data'] + data['api_data']
             processed_data = pd.DataFrame(data=final_container).dropna()
         # print(stored)
@@ -588,7 +597,7 @@ def generate_statistical_indicators(data: dict, stored:bool =False,**kwargs) -> 
                                                       stored=stored,
                                                       symbol=kwargs['symbol'],
                                                       start_date=kwargs['start_date'],
-                                                      model_data=data['model_data'] if stored else None,
+                                                      full_data=final_container if stored else data['api_data'],
                                                       ),
                       rsi=to_data_frame(operation_data=calculate_rsi(processed_data),
                                         time_data=processed_data['datetime']),
@@ -615,11 +624,11 @@ def generate_statistical_indicators(data: dict, stored:bool =False,**kwargs) -> 
         result['macd']['datetime'] = clean_stock_datetime(result['macd']['datetime'])
 
         result['status'] = True
-        # pdb.set_trace()
+        #
 
     except Exception as X:
         # raise Exception(X)
-        pdb.set_trace()
+        #
         result['error'] = f"There was an error in the execution: {X}"
         result['status'] = False
 
@@ -769,7 +778,7 @@ def clean_stock_datetime(date_list: pd.Series) -> pd.Series:
         #                       hour=date_eval.hour,
         #                       minute=30,
         #                       second=date_eval.second).strftime("%Y-%m-%d %H:%m:%S")
-    # pdb.set_trace()
+    #
     return date_list
 
 def process_file_data(csvfile, delimiter=";"):
@@ -803,7 +812,7 @@ def process_file_data(csvfile, delimiter=";"):
             operations['rsi'] = operations['rsi'].fillna(0)
             operations['stochastic'] = operations['stochastic'].fillna(0)
             print([(k, len(obj)) for k, obj in operations.items()])
-            # pdb.set_trace()
+            #
             status, error = store_full_data(dframe['stock_details'], operations)
             if not status:
                 result = error
@@ -849,7 +858,7 @@ def store_full_data(stock_details:dict,
                                   operation_data['adr'].iloc[i],operation_data['macd'].iloc[i],
                                   operation_data['stochastic'].iloc[i]):
 
-                # pdb.set_trace()
+                #
                 """
                 compra = Si RSI > 50 and k > 20 and macd > signal and rsi_actual > rsi_anterior
                 Venta = Si RSI < 50 and k < 80 and macd < signal and rsi_actual < rsi_anterior
@@ -877,7 +886,7 @@ def store_full_data(stock_details:dict,
                     if f_stoch == f_rsi == f_macd == 'COMPRA' else 'BLANCO'
 
 
-                # pdb.set_trace()
+                #
 
                 record, created = HistoricalData.objects.get_or_create(
                                                 stock = stock,
@@ -897,7 +906,7 @@ def store_full_data(stock_details:dict,
                 if not created and update:
 
                     if (rsi > 0.00 and adr >0.00 and macd > 0.00 and signal > 0.00 and k >0.00 ) or (rsi > 0.00 and adr > 0.00 and macd > 0.00 and signal > 0.00):
-                        # pdb.set_trace()
+                        #
                         record.rsi = rsi
                         record.adr = adr
                         # record.k_slow = float(operation_data['stochastic'].iloc[i]['k_slow'])
@@ -910,13 +919,13 @@ def store_full_data(stock_details:dict,
                         record.f_macd = f_macd
                         record.bullet = bullet
                     else:
-                        # pdb.set_trace()
+                        #
                         # print(record.rsi, record.macd,record.signal, record.k, record.adr)
                         pass
                     # print(i)
                     record.updated_at = datetime.now()
                 else:
-                    # pdb.set_trace()
+                    #
                     record.rsi = rsi
                     record.adr = adr
                     # record.k_slow = float(operation_data['stochastic'].iloc[i]['k_slow'])
@@ -929,12 +938,12 @@ def store_full_data(stock_details:dict,
                     record.f_macd = f_macd
                     record.bullet = bullet
 
-                # pdb.set_trace()
+                #
                 record.save()
                 # if i == 2:
 
 
-        # pdb.set_trace()
+        #
         status = True
     except Exception as X:
         error = f"There was an error with the store request: {X}"
@@ -956,7 +965,7 @@ def process_data(data):
         serialized.append(sum(float(y) for y in x[last:i])/len(x[last:i]))
         # print(last,i,x[last:i],sum(x[last:i]))
         last += 4
-        # pdb.set_trace()
+        #
         # datetime.sleep(20)
     return pd.Series(data={k:v for k, v in enumerate(serialized)})
 
@@ -1119,14 +1128,16 @@ def generate_time_intervals_for_api_query():
                 final_result['start_date'] = f
                 final_result['end_date'] = s
 
-                if final_result['start_date'].minute > 30:
-                    print(today)
-                    pdb.set_trace()
+                # if final_result['start_date'].minute > 30:
+                #     print(today)
+                #
                 # # update to control issue with the dates and stuffs
-                # if final_result['start_date'].date() == datetime.today().date() \
-                #         and (final_result['start_date'].hour > 18 or final_result['start_date'].hour < 9):
-                #     final_result['prior_start_date'] = final_result['start_date']
-                #     final_result['start_date'] -= timedelta(days=1)
+                if final_result['start_date'].date() == datetime.today().date() \
+                        and (final_result['start_date'].hour > 18 or final_result['start_date'].hour < 9):
+                    # print(today)
+                    #
+                    final_result['prior_start_date'] = final_result['start_date']
+                    final_result['start_date'] -= timedelta(days=1)
 
         status, error = settings.REDIS_OBJ.refresh_last_fetched_time(new_refresh_time=datetime.fromisoformat(
             end_date).isoformat())
@@ -1203,11 +1214,11 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
                 stored = False
                 stock_details = api_data['stock_details']
                 data_container['api_data'] = api_data['data']
-                # pdb.set_trace()
+                #
                 if(start_date.year == end_date.year and
                        Stock.listed_last_historical_data_fetch(symbol=symbol, refresh_time=start_date)):
                     stored = True
-                    # pdb.set_trace()
+                    #
                     # obj = Stock.objects.get(symbol=symbol)
 
                     # here's the problem with the time formatting.
@@ -1242,7 +1253,7 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
     except Exception as X:
         result['status'] = False
         result['error'] = f"{X}"
-        pdb.set_trace()
+        #
 
     finally:
         return result
