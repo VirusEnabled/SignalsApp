@@ -406,8 +406,8 @@ def calculate_adr(dt: pd.DataFrame) -> pd.Series:
     #
     # return data['tr1']/14
     # return adr(tr,14)
-    window = 14
-    adr = sma(high,window) - sma(low,window)
+    window = 7
+    adr = sma(high, window) - sma(low, window)
     return adr
 
 
