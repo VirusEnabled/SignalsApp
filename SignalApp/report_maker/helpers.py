@@ -15,6 +15,7 @@ import numpy as np
 import requests as r
 DATA_API_OBJ = APIDataHandler()
 import time
+import random
 
 
 
@@ -867,6 +868,7 @@ def store_full_data(stock_details:dict,
                 Venta = Si RSI < 50 and k < 80 and macd < signal and rsi_actual < rsi_anterior
                 """
                 f_stoch = ''
+
                 if (operation_data['rsi'].iloc[i]['operation_data'] > 50.00 and
                             operation_data['stochastic'].iloc[i]['k'] > 20.00 and
                             operation_data['macd'].iloc[i]['macd'] > operation_data['macd'].iloc[i]['signal'] and
@@ -885,11 +887,19 @@ def store_full_data(stock_details:dict,
                 f_rsi = 'COMPRA' if operation_data['rsi'].iloc[i]['operation_data'] > 50.00 else 'VENTA'
                 f_macd = 'COMPRA' if operation_data['macd'].iloc[i]['macd'] > operation_data['macd'].iloc[i]['signal'] \
                     else 'VENTA'
+
+
+                if not f_stoch:
+                    if f_rsi == f_macd == 'COMPRA' :
+                        f_stoch = "COMPRA"
+
+                    elif f_rsi == f_macd == 'VENTA':
+                        f_stoch = "VENTA"
+                    else:
+                        f_stoch = random.choice([f_rsi, f_macd])
+
                 bullet = 'ROJO' if f_stoch == f_rsi == f_macd == 'VENTA' else 'AZUL' \
                     if f_stoch == f_rsi == f_macd == 'COMPRA' else 'BLANCO'
-
-
-                #
 
                 record, created = HistoricalData.objects.get_or_create(
                                                 stock = stock,
