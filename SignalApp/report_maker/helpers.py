@@ -851,6 +851,7 @@ def store_full_data(stock_details:dict,
         if created:
             stock.stock_detail = json.dumps(stock_details)
             stock.save()
+
         print(len(operation_data['olhcv']),
               len(operation_data['rsi']),
               len(operation_data['macd']),
@@ -862,7 +863,6 @@ def store_full_data(stock_details:dict,
                                   operation_data['adr'].iloc[i],operation_data['macd'].iloc[i],
                                   operation_data['stochastic'].iloc[i]):
 
-                #
                 """
                 compra = Si RSI > 50 and k > 20 and macd > signal and rsi_actual > rsi_anterior
                 Venta = Si RSI < 50 and k < 80 and macd < signal and rsi_actual < rsi_anterior
@@ -895,16 +895,21 @@ def store_full_data(stock_details:dict,
 
                     elif f_rsi == f_macd == 'VENTA':
                         f_stoch = "VENTA"
+
                     else:
                         f_stoch = random.choice([f_rsi, f_macd])
 
                 bullet = 'ROJO' if f_stoch == f_rsi == f_macd == 'VENTA' else 'AZUL' \
                     if f_stoch == f_rsi == f_macd == 'COMPRA' else 'BLANCO'
 
+
+
+
                 record, created = HistoricalData.objects.get_or_create(
                                                 stock = stock,
                                                 api_date=operation_data['olhcv'].iloc[i]['datetime']
                                                 )
+
                 rsi = float(operation_data['rsi'].iloc[i]['operation_data'])
                 signal = float(operation_data['macd'].iloc[i]['signal'])
                 macd = float(operation_data['macd'].iloc[i]['macd'])
@@ -951,12 +956,8 @@ def store_full_data(stock_details:dict,
                     record.f_macd = f_macd
                     record.bullet = bullet
 
-                #
                 record.save()
-                # if i == 2:
 
-
-        #
         status = True
     except Exception as X:
         error = f"There was an error with the store request: {X}"
@@ -1192,6 +1193,40 @@ def recalculate_stock_indicators(symbol:str) -> dict:
 
     return result
 
+def get_entry_price(index:int, repeated:int,
+                    values:list, bullet: str)->float:
+    """
+    calculates the entry price needed for the given value
+    :param index: int
+    :param repeated: int
+    :param values: list
+    :return: float
+    """
+
+
+def calculate_tp_sl_on_records(start_date:datetime) -> dict:
+    """
+    calculates the take profit values and stop loss on the records
+    that matches the given description
+    :param start_date: datetime: the date to start fetching data and calculating from
+    :return: dict
+    """
+    result = {}
+    p_i = lambda i: i - 1 if i > 0 else 0
+    existing_data = HistoricalData.objects.filter(api_date__gte=start_date)
+    # calculate Stop Loss(SL) and Take Profit (TP)
+    repeated = 0
+    for i in range(len(existing_data)):
+        if i > 0:
+            if existing_data[p_i(i)].bullet == existing_data[i].bullet:
+                entry_price = get_entry_price(index=i,repeated=repeated,values=existing_data,
+                                              bullet=existing_data[i].bullet)
+            else:
+                repeated = 0
+
+
+    return result
+
 def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
     """
     fetches the data for all of the markets in the list based on the needed and then
@@ -1254,10 +1289,15 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
 
                 status, error = store_full_data(stock_details, operations,
                                                 update=stored)
+
                 result['status'] = status
                 if not status:
                     raise Exception(error)
                 else:
+                    sl_tp_calculation = calculate_tp_sl_on_records(start_date=start_date)
+                    if not sl_tp_calculation['status']:
+                        raise Exception(sl_tp_calculation['error'])
+
                     print(f"Data for symbol: {symbol}, has been successfully added to the DB"
                           f" with the intervals {start_date} to {end_date}.")
             else:
