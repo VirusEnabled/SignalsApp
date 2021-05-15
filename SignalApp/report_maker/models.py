@@ -162,3 +162,29 @@ class IndicatorCalculationData(BaseModel):
         return f"<{self.symbol}>"
 
 
+
+
+class HistoricalTransactionDetail(BaseModel):
+    historical_data = models.OneToOneField(HistoricalData, on_delete=models.CASCADE)
+    id_market = models.IntegerField(default=0)
+    status = models.CharField(max_length=100, default='close')
+    stop_loss_price = models.FloatField(default=0.00)
+    take_profit_price = models.FloatField(default=0.00)
+    avg_price = models.FloatField(default=0.00)
+    entry_type = models.CharField(max_length=100, default='')
+    number_of_entry = models.IntegerField(default=0)
+
+
+    @staticmethod
+    def is_second(record_datetime: str) -> bool:
+        """
+        this actually requires to make
+        sure that the given datetime is
+        on the last record for the table
+
+        basically verifies if there's only one record with the given date.
+        :param record_datetime: str: a string representing the date to be evaluated
+        :return: bool
+        """
+        d = t.fromisoformat(record_datetime)
+        HistoricalTransactionDetail.objects.filter()
