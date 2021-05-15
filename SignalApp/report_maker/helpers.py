@@ -1194,14 +1194,20 @@ def recalculate_stock_indicators(symbol:str) -> dict:
     return result
 
 def get_entry_price(index:int, repeated:int,
-                    values:list, bullet: str)->float:
+                    values:list) -> float:
     """
-    calculates the entry price needed for the given value
+    calculates the entry price
+    needed for the given value
+
     :param index: int
     :param repeated: int
     :param values: list
     :return: float
     """
+
+    entry_price = sum(values[j].open for j in values if j <= index and
+                        j >= abs(index-repeated)) if repeated > 1 else values[index].open
+    return entry_price
 
 
 def calculate_tp_sl_on_records(start_date:datetime) -> dict:
@@ -1214,13 +1220,16 @@ def calculate_tp_sl_on_records(start_date:datetime) -> dict:
     result = {}
     p_i = lambda i: i - 1 if i > 0 else 0
     existing_data = HistoricalData.objects.filter(api_date__gte=start_date)
+
     # calculate Stop Loss(SL) and Take Profit (TP)
     repeated = 0
     for i in range(len(existing_data)):
         if i > 0:
-            if existing_data[p_i(i)].bullet == existing_data[i].bullet:
-                entry_price = get_entry_price(index=i,repeated=repeated,values=existing_data,
-                                              bullet=existing_data[i].bullet)
+            if(existing_data[p_i(i)].bullet == existing_data[i].bullet
+               and existing_data[i].bullet == 'ROJO' or existing_data[i].bullet == 'AZUL'):
+                repeated += 1
+                entry_price = get_entry_price(index=i,repeated=repeated,values=existing_data)
+
             else:
                 repeated = 0
 
