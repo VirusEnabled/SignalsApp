@@ -1209,6 +1209,31 @@ def get_entry_price(index:int, repeated:int,
                         j >= abs(index-repeated)) if repeated > 1 else values[index].open
     return entry_price
 
+def get_transaction_detail_status(record:HistoricalData, stop_loss:float,
+                                  take_profit:float) -> str:
+
+    """
+    Analyzes which value is required to get
+    the correct transaction status based on :
+
+     if in SALE== RED:
+        stop_loss <= low: close else open
+
+    if in BUY == BLUE:
+        take_profit >= high: close else open
+
+    :param record: Django's object
+    :return: str
+    """
+
+    if record.bullet == 'RED':
+        result = 'close' if stop_loss <= record.low else 'open'
+
+    else:
+        result = 'close' if take_profit >= record.high else 'open'
+
+    return result
+
 
 def calculate_tp_sl_on_records(start_date:datetime) -> dict:
     """
@@ -1241,7 +1266,9 @@ def calculate_tp_sl_on_records(start_date:datetime) -> dict:
                         stop_loss_price=stop_loss,
                         take_profit_price=take_profit,
                         avg_price=entry_price,
-                        status='open' if i == len_ - 1 else 'close',
+                        status=get_transaction_detail_status(record=existing_data[i],
+                                                             stop_loss=stop_loss,
+                                                             take_profit=take_profit),
                         entry_type='VENTA' if existing_data[i].bullet == 'ROJO' else 'COMPRA'
                     )
                     result['created_records'].append(record)
