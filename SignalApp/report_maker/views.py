@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from django.views import View
+from rest_framework.viewsets import ViewSet, ModelViewSet
 from django.template.loader import render_to_string
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import AnonymousUser
@@ -329,3 +330,60 @@ def generate_graphs(request):
         # return Response(status=s, data=response)
 
 """
+
+class StockViewSet(ViewSet):
+    serializer_class = StockSerializer
+    lookup_field = 'id'
+    permission_classes = []
+    queryset = Stock.objects.all()
+    # http_method_names = ['GET']
+
+
+    def retrieve(self):
+        """
+        retrieves the same data of the stock
+        but with the rest of the items
+        :return:
+        """
+        return super().retrieve()
+
+
+@api_view(http_method_names=['GET'])
+def stock_list(request):
+    """
+    lists all of the stocks available
+    :param request: http
+    :return: json
+    """
+    return Response(data=StockSerializer(instance=Stock.objects.all(),many=True).data,
+                    status=status.HTTP_200_OK)
+
+@api_view(http_method_names=['GET'])
+def get_last_historical_record(request):
+    """
+    loads the last historical data from
+    the stock market that matches the given
+    stock.
+
+    this for now won't have any authentication
+    but we'll try to keep it going further.
+    :param request: http request
+    :return: json
+    """
+    request_data = request.data
+    response_data = {}
+    st = status.HTTP_200_OK
+    try:
+        last_record  = Stock.objects.get(symbol=request_data['symbol']).historicaldata_set.last()
+        serialized = HistoricalDataSerializer(instance=last_record)
+        response_data['data'] = serialized.data
+
+    except ObjectDoesNotExist:
+        response_data['error'] = 'The stock provided doesn\'t exist, try a different symbol.'
+        st = status.HTTP_404_NOT_FOUND
+
+    except Exception as X:
+        response_data['error']= f'There was an internal error {X}'
+        st = status.HTTP_500_INTERNAL_SERVER_ERROR
+
+    return Response(data=response_data,status=st,content_type='json')
