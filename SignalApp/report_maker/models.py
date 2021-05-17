@@ -175,16 +175,3 @@ class HistoricalTransactionDetail(BaseModel):
     number_of_entry = models.IntegerField(default=0)
 
 
-    @staticmethod
-    def is_second(record_datetime: str) -> bool:
-        """
-        this actually requires to make
-        sure that the given datetime is
-        on the last record for the table
-
-        basically verifies if there's only one record with the given date.
-        :param record_datetime: str: a string representing the date to be evaluated
-        :return: bool
-        """
-        d = t.fromisoformat(record_datetime)
-        HistoricalTransactionDetail.objects.filter()
