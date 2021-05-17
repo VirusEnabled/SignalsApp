@@ -23,6 +23,15 @@ class Stock(BaseModel):
                                 choices=choices,
                                 default=choices[0])
 
+    @property
+    def prty(self):
+        """
+        renders a pritable version of the stock priority
+        :return:
+        """
+        return self.choices[0][1] if 'HIGH' in self.priority else self.choices[1][1] \
+            if 'LOW' in self.priority else self.choices[2][1]
+
     def __str__(self):
         return f"<{self.symbol}>"
 
@@ -160,8 +169,6 @@ class IndicatorCalculationData(BaseModel):
 
     def __str__(self):
         return f"<{self.symbol}>"
-
-
 
 
 class HistoricalTransactionDetail(BaseModel):
