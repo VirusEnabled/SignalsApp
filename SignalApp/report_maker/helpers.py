@@ -300,6 +300,7 @@ class RSIndicator(RSI):
 
         self.df["AVG_GAIN"] = self.df["GAIN"].ewm(span=time_period).mean()
         self.df["AVG_LOSS"] = self.df["LOSS"].ewm(span=time_period).mean()
+
         self.df["AVG_GAIN"].iloc[:time_period] = np.nan
         self.df["AVG_LOSS"].iloc[:time_period] = np.nan
 
@@ -366,7 +367,7 @@ def get_last_records(symbol:str, first_record_date: str ,window_number:int=14):
 
     return result
 
-
+# got issues with the amount of receiving amount of data.
 def calculate_macd(data: pd.DataFrame) -> pd.DataFrame:
     """
     generates the calulation for the MACD
@@ -377,6 +378,7 @@ def calculate_macd(data: pd.DataFrame) -> pd.DataFrame:
     ema26 = data['close'].ewm(span=21, adjust=False).mean()
     macdx = ema12 - ema26
     signal = macdx.ewm(span=5, adjust=False).mean()
+    # pdb.set_trace()
     resultant_data = macd(close=data['close'].astype(float),fast=8, slow=21,signal=5)
     # result = pd.DataFrame(data={'macd': macdx, 'signal':signal,'datetime':data['datetime']})
     result = pd.DataFrame(data={'macd': resultant_data['MACD_8_21_5'],
@@ -526,7 +528,10 @@ STOCHASTIC
                                   {
                                       'k': d['k'],
                                       'datetime': d['datetime']
-                                  } for d in kwargs['full_data'] if float(d['volume']) > 0.00])
+                                  } for d in kwargs['full_data']
+                                  # if float(d['volume']) > 0.00  # commented as needed to solve issue
+
+                                  ])
     stochastic['k'] = stochastic['k'].astype(float)
     # print(stochastic)
     #
@@ -575,7 +580,7 @@ STOCHASTIC
 
     return stochastic
 
-
+# bug here
 def generate_statistical_indicators(data: dict, stored:bool =False,**kwargs) -> dict:
     """
     generates the 4 statistical
@@ -596,7 +601,9 @@ def generate_statistical_indicators(data: dict, stored:bool =False,**kwargs) -> 
             #
             final_container = data['model_data'] + data['api_data']
             processed_data = pd.DataFrame(data=final_container).dropna()
-        # print(stored)
+
+            # pdb.set_trace()
+
         result = dict(stochastic=calculate_stochastic(data=processed_data,
                                                       stored=stored,
                                                       symbol=kwargs['symbol'],
@@ -635,6 +642,8 @@ def generate_statistical_indicators(data: dict, stored:bool =False,**kwargs) -> 
         #
         result['error'] = f"There was an error in the execution: {X}"
         result['status'] = False
+        result['traceback'] = X.__traceback__
+        # pdb.set_trace()
 
     return result
 
@@ -1204,9 +1213,9 @@ def get_entry_price(index:int, repeated:int,
     :param values: list
     :return: float
     """
-
-    entry_price = sum(values[j].open for j in range(len(values)) if j <= index and
-                        j >= abs(index-repeated)) if repeated > 1 else values[index].open
+    divisor = len(values)
+    entry_price = float(sum(values[j].open for j in range(len(values)) if j <= index and
+                        j >= abs(index-repeated)) / divisor) if repeated > 1 else values[index].open
     return entry_price
 
 def get_transaction_detail_status(record:HistoricalData, stop_loss:float,
@@ -1279,6 +1288,7 @@ def calculate_tp_sl_on_records(start_date:datetime) -> dict:
         result['status'] = True
 
     except Exception as X:
+        # pdb.set_trace()
         result['status'] = False
         result['error'] = f"{X}"
 
@@ -1364,7 +1374,9 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
     except Exception as X:
         result['status'] = False
         result['error'] = f"{X}"
-        #
+        result['traceback'] = X.__traceback__
+
+        # pdb.set_trace()
 
     finally:
         return result
