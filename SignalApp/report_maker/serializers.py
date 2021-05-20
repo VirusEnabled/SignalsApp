@@ -15,8 +15,10 @@ class HistoricalDataSerializer(ModelSerializer):
         model = HistoricalData
         fields = ['open','high','low',
                   'close', 'volume', 'datetime',
-                  'k','bullet','f_stoch','f_rsi','f_macd',
-                  'rsi','adr','macd','signal','historicaltransactiondetail'
+                  'k',
+
+                  # 'bullet','f_stoch','f_rsi','f_macd',
+                  # 'rsi','adr','macd','signal',
                   ]
         depth = 1
 

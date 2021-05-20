@@ -169,7 +169,7 @@ class APIDataHandler(object):
                                'datetime': record['datetime'],
                                }
                            for record in response_data['values']
-                              if float(record['volume']) > 0.00
+                              # if float(record['volume']) > 0.00
                               ]
                           }
                 result['data'].reverse()
