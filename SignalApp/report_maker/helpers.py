@@ -16,7 +16,7 @@ import requests as r
 DATA_API_OBJ = APIDataHandler()
 import time
 import random
-
+from datetime import timezone
 
 
 def generate_candle_sticks_graph(stock_historical_data, stock_details):
@@ -378,12 +378,13 @@ def calculate_macd(data: pd.DataFrame) -> pd.DataFrame:
     ema26 = data['close'].ewm(span=21, adjust=False).mean()
     macdx = ema12 - ema26
     signal = macdx.ewm(span=5, adjust=False).mean()
-    # pdb.set_trace()
     resultant_data = macd(close=data['close'].astype(float),fast=8, slow=21,signal=5)
-    # result = pd.DataFrame(data={'macd': macdx, 'signal':signal,'datetime':data['datetime']})
-    result = pd.DataFrame(data={'macd': resultant_data['MACD_8_21_5'],
-                                'signal':resultant_data['MACDs_8_21_5'],
-                                'datetime':data['datetime']})
+    # pdb.set_trace()
+
+    result = pd.DataFrame(data={'macd': macdx, 'signal':signal,'datetime':data['datetime']})
+    # result = pd.DataFrame(data={'macd': resultant_data['MACD_8_21_5'],
+    #                             'signal':resultant_data['MACDs_8_21_5'],
+    #                             'datetime':data['datetime']})
     return result
 
 
@@ -602,7 +603,7 @@ def generate_statistical_indicators(data: dict, stored:bool =False,**kwargs) -> 
             final_container = data['model_data'] + data['api_data']
             processed_data = pd.DataFrame(data=final_container).dropna()
 
-            # pdb.set_trace()
+        # pdb.set_trace()
 
         result = dict(stochastic=calculate_stochastic(data=processed_data,
                                                       stored=stored,
@@ -1252,7 +1253,7 @@ def calculate_tp_sl_on_records(start_date:datetime) -> dict:
     :return: dict
     """
     result = {'created_records':[]}
-    p_i = lambda i: i - 1 if i > 0 else 0
+    p_i = lambda i : i - 1 if i > 0 else 0
     existing_data = HistoricalData.objects.filter(api_date__gte=start_date.date())
 
     # calculate Stop Loss(SL) and Take Profit (TP)
@@ -1271,15 +1272,22 @@ def calculate_tp_sl_on_records(start_date:datetime) -> dict:
                         entry_price + (existing_data[i].adr * 1.5)
 
                     record, created = HistoricalTransactionDetail.objects.get_or_create(
-                        historical_data=existing_data[i],
-                        stop_loss_price=stop_loss,
-                        take_profit_price=take_profit,
-                        avg_price=entry_price,
-                        status=get_transaction_detail_status(record=existing_data[i],
-                                                             stop_loss=stop_loss,
-                                                             take_profit=take_profit),
-                        entry_type='VENTA' if existing_data[i].bullet == 'ROJO' else 'COMPRA'
+                        historical_data=existing_data[i]
                     )
+
+                    record.stop_loss_price = stop_loss
+                    record.take_profit_price = take_profit
+                    record.avg_price = entry_price
+                    record.status = get_transaction_detail_status(record=existing_data[i],
+                                                           stop_loss=stop_loss,
+                                                           take_profit=take_profit)
+
+                    record.entry_type = 'VENTA' if existing_data[i].bullet == 'ROJO' else 'COMPRA'
+                    if not created:
+                        record.updated_at = datetime.now()
+
+                    record.save()
+
                     result['created_records'].append(record)
                 else:
                     repeated = 0
@@ -1288,9 +1296,12 @@ def calculate_tp_sl_on_records(start_date:datetime) -> dict:
         result['status'] = True
 
     except Exception as X:
-        # pdb.set_trace()
         result['status'] = False
+        result['traceback'] = X.__traceback__
+        result['err_obj'] = X
         result['error'] = f"{X}"
+        # pdb.set_trace()
+
 
     return result
 
