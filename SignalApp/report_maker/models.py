@@ -172,7 +172,7 @@ class IndicatorCalculationData(BaseModel):
 
 
 class HistoricalTransactionDetail(BaseModel):
-    historical_data = models.ForeignKey(HistoricalData, on_delete=models.CASCADE)
+    historical_data = models.OneToOneField(HistoricalData, on_delete=models.CASCADE)
     id_market = models.IntegerField(default=0)
     status = models.CharField(max_length=100, default='close')
     stop_loss_price = models.FloatField(default=0.00)
