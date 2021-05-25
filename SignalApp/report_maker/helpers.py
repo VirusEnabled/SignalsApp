@@ -1264,6 +1264,7 @@ def get_transaction_detail_status(record:HistoricalData, stop_loss:float,
         result = 'close' if take_profit >= record.high else 'open'
 
     return result
+
 def organize_transaction_data(values: list)->list:
     """
     organizes the values of the list
@@ -1274,8 +1275,8 @@ def organize_transaction_data(values: list)->list:
     records = []
     x_values = [x.api_date for x in values]
     while values:
-        x = x_values.pop(values.index(min(x_values)))
-        v = values.pop(x)
+        v = values.pop(x_values.index(min(x_values)))
+        x_values.pop(x_values.index(min(x_values)))
         records.append(v)
     return records
 
