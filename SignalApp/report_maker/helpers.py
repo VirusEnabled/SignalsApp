@@ -1264,6 +1264,20 @@ def get_transaction_detail_status(record:HistoricalData, stop_loss:float,
         result = 'close' if take_profit >= record.high else 'open'
 
     return result
+def organize_transaction_data(values: list)->list:
+    """
+    organizes the values of the list
+    based on the api_date
+    :param values: list
+    :return: list
+    """
+    records = []
+    while values:
+        x_values = [x.api_date for x in values]
+        v = values.pop(values.index(min(x_values)))
+        records.append(v)
+    return records
+
 
 def stack_equal(queryset):
     """
@@ -1297,6 +1311,7 @@ def stack_equal(queryset):
             if node:
                 values = node.to_list()
                 values.pop(0)  # dropping the first ones so that the values are calculated properly.
+                values = organize_transaction_data(values)
                 records.append(values)
                 print("SUPPOSEDLY ADDED VALUES TO LIST")
             # pdb.set_trace()
