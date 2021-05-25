@@ -1261,13 +1261,14 @@ def calculate_tp_sl_on_records(start_date:datetime) -> dict:
     len_=len(existing_data)
     try:
         for i in range(len_):
-            if i > 0:
+            if i > 1:
                 if (existing_data[p_i(i)].bullet == existing_data[i].bullet
                     and existing_data[i].bullet == 'ROJO' or existing_data[i].bullet == 'AZUL'):
                     repeated += 1
                     entry_price = get_entry_price(index=i, repeated=repeated, values=existing_data)
                     take_profit = entry_price + (existing_data[i].adr * 2) if existing_data[i].bullet == "AZUL" else \
                         entry_price - (existing_data[i].adr * 1.5)
+
                     stop_loss = entry_price - (existing_data[i].adr * 1.5) if existing_data[i].bullet == "AZUL" else \
                         entry_price + (existing_data[i].adr * 1.5)
 
