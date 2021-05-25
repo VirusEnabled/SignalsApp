@@ -1272,9 +1272,10 @@ def organize_transaction_data(values: list)->list:
     :return: list
     """
     records = []
+    x_values = [x.api_date for x in values]
     while values:
-        x_values = [x.api_date for x in values]
-        v = values.pop(values.index(min(x_values)))
+        x = x_values.pop(values.index(min(x_values)))
+        v = values.pop(x)
         records.append(v)
     return records
 
