@@ -18,6 +18,27 @@ import time
 import random
 from datetime import timezone
 
+class Node(object):
+    def __init__(self, value):
+        self.prior = None
+        self.value = value
+        self.next = None
+
+    def to_list(self) -> list:
+        """
+        turns the node to
+        a list of items
+        :return: list
+        """
+        current = self
+        values = []
+        while current:
+            values.append(current.value)
+            current = current.next
+        return values
+
+
+
 
 def generate_candle_sticks_graph(stock_historical_data, stock_details):
     """
@@ -1244,8 +1265,50 @@ def get_transaction_detail_status(record:HistoricalData, stop_loss:float,
 
     return result
 
+def stack_equal(queryset):
+    """
+    keeps only those who are consecutively with one
+    value
+    :param queryset:
+    :return: list of lists
+    """
+    records = []
+    node = None
+    current = None
+    total = len(queryset)
 
-def calculate_tp_sl_on_records(start_date:datetime) -> dict:
+    for i in range(total-1):
+        if queryset[i].bullet == queryset[i+1].bullet and not node and  queryset[i+1].bullet != 'BLANCO':
+            node = Node(queryset[i])
+            node.next = Node(queryset[i+1])
+            current = node.next
+            print('starting',current.value, node.value)
+
+        elif current and queryset[i].bullet == current.value.bullet:
+            current.next = Node(queryset[i])
+            current = current.next
+            print('here, adding bullet', current.value)
+
+        elif queryset[i].bullet != queryset[i+1].bullet and not node:
+            print('NOTHING MATCHED')
+            continue
+
+        else:
+            if node:
+                values = node.to_list()
+                values.pop(0)  # dropping the first ones so that the values are calculated properly.
+                records.append(values)
+                print("SUPPOSEDLY ADDED VALUES TO LIST")
+            # pdb.set_trace()
+            node = None
+            current = None
+
+    # pdb.set_trace()
+    return records
+
+
+
+def calculate_tp_sl_on_records(start_date:datetime, symbol: str) -> dict:
     """
     calculates the take profit values and stop loss on the records
     that matches the given description
@@ -1254,44 +1317,46 @@ def calculate_tp_sl_on_records(start_date:datetime) -> dict:
     """
     result = {'created_records':[]}
     p_i = lambda i : i - 1 if i > 0 else 0
-    existing_data = HistoricalData.objects.filter(api_date__gte=start_date.date())
+    existing_data = Stock.objects.get(symbol=symbol).historicaldata_set.filter(api_date__gte=start_date.date())
+    serialized = stack_equal(existing_data)
 
     # calculate Stop Loss(SL) and Take Profit (TP)
     repeated = 0
-    len_=len(existing_data)
     try:
-        for i in range(len_):
-            if i > 1:
-                if (existing_data[p_i(i)].bullet == existing_data[i].bullet
-                    and existing_data[i].bullet == 'ROJO' or existing_data[i].bullet == 'AZUL'):
-                    repeated += 1
-                    entry_price = get_entry_price(index=i, repeated=repeated, values=existing_data)
-                    take_profit = entry_price + (existing_data[i].adr * 2) if existing_data[i].bullet == "AZUL" else \
-                        entry_price - (existing_data[i].adr * 1.5)
+        for item in serialized:
+            len_ = len(item)
+            for i in range(len_):
+                if i > 0:
+                    if (item[p_i(i)].bullet == item[i].bullet
+                        and item[i].bullet == 'ROJO' or item[i].bullet == 'AZUL'):
+                        repeated += 1
+                        entry_price = get_entry_price(index=i, repeated=repeated, values=item)
+                        take_profit = entry_price + (item[i].adr * 2) if item[i].bullet == "AZUL" else \
+                            entry_price - (item[i].adr * 1.5)
 
-                    stop_loss = entry_price - (existing_data[i].adr * 1.5) if existing_data[i].bullet == "AZUL" else \
-                        entry_price + (existing_data[i].adr * 1.5)
+                        stop_loss = entry_price - (item[i].adr * 1.5) if item[i].bullet == "AZUL" else \
+                            entry_price + (existing_data[i].adr * 1.5)
 
-                    record, created = HistoricalTransactionDetail.objects.get_or_create(
-                        historical_data=existing_data[i]
-                    )
+                        record, created = HistoricalTransactionDetail.objects.get_or_create(
+                            historical_data=item[i]
+                        )
 
-                    record.stop_loss_price = stop_loss
-                    record.take_profit_price = take_profit
-                    record.avg_price = entry_price
-                    record.status = get_transaction_detail_status(record=existing_data[i],
-                                                           stop_loss=stop_loss,
-                                                           take_profit=take_profit)
+                        record.stop_loss_price = stop_loss
+                        record.take_profit_price = take_profit
+                        record.avg_price = entry_price
+                        record.status = get_transaction_detail_status(record=item[i],
+                                                               stop_loss=stop_loss,
+                                                               take_profit=take_profit)
 
-                    record.entry_type = 'VENTA' if existing_data[i].bullet == 'ROJO' else 'COMPRA'
-                    if not created:
-                        record.updated_at = datetime.now()
+                        record.entry_type = 'VENTA' if item[i].bullet == 'ROJO' else 'COMPRA'
+                        if not created:
+                            record.updated_at = datetime.now()
 
-                    record.save()
+                        record.save()
 
-                    result['created_records'].append(record)
-                else:
-                    repeated = 0
+                        result['created_records'].append(record)
+                    else:
+                        repeated = 0
 
         # pdb.set_trace()
         result['status'] = True
@@ -1374,7 +1439,7 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
                     raise Exception(error)
                 else:
                     # pdb.set_trace()
-                    sl_tp_calculation = calculate_tp_sl_on_records(start_date=start_date)
+                    sl_tp_calculation = calculate_tp_sl_on_records(start_date=start_date, symbol=symbol)
                     if not sl_tp_calculation['status']:
                         raise Exception(sl_tp_calculation['error'])
 
