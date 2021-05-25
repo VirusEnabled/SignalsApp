@@ -1326,37 +1326,36 @@ def calculate_tp_sl_on_records(start_date:datetime, symbol: str) -> dict:
         for item in serialized:
             len_ = len(item)
             for i in range(len_):
-                if i > 0:
-                    if (item[p_i(i)].bullet == item[i].bullet
-                        and item[i].bullet == 'ROJO' or item[i].bullet == 'AZUL'):
-                        repeated += 1
-                        entry_price = get_entry_price(index=i, repeated=repeated, values=item)
-                        take_profit = entry_price + (item[i].adr * 2) if item[i].bullet == "AZUL" else \
-                            entry_price - (item[i].adr * 1.5)
+                if (item[p_i(i)].bullet == item[i].bullet
+                    and item[i].bullet == 'ROJO' or item[i].bullet == 'AZUL'):
+                    repeated += 1
+                    entry_price = get_entry_price(index=i, repeated=repeated, values=item)
+                    take_profit = entry_price + (item[i].adr * 2) if item[i].bullet == "AZUL" else \
+                        entry_price - (item[i].adr * 1.5)
 
-                        stop_loss = entry_price - (item[i].adr * 1.5) if item[i].bullet == "AZUL" else \
-                            entry_price + (existing_data[i].adr * 1.5)
+                    stop_loss = entry_price - (item[i].adr * 1.5) if item[i].bullet == "AZUL" else \
+                        entry_price + (existing_data[i].adr * 1.5)
 
-                        record, created = HistoricalTransactionDetail.objects.get_or_create(
-                            historical_data=item[i]
-                        )
+                    record, created = HistoricalTransactionDetail.objects.get_or_create(
+                        historical_data=item[i]
+                    )
 
-                        record.stop_loss_price = stop_loss
-                        record.take_profit_price = take_profit
-                        record.avg_price = entry_price
-                        record.status = get_transaction_detail_status(record=item[i],
-                                                               stop_loss=stop_loss,
-                                                               take_profit=take_profit)
+                    record.stop_loss_price = stop_loss
+                    record.take_profit_price = take_profit
+                    record.avg_price = entry_price
+                    record.status = get_transaction_detail_status(record=item[i],
+                                                           stop_loss=stop_loss,
+                                                           take_profit=take_profit)
 
-                        record.entry_type = 'VENTA' if item[i].bullet == 'ROJO' else 'COMPRA'
-                        if not created:
-                            record.updated_at = datetime.now()
+                    record.entry_type = 'VENTA' if item[i].bullet == 'ROJO' else 'COMPRA'
+                    if not created:
+                        record.updated_at = datetime.now()
 
-                        record.save()
+                    record.save()
 
-                        result['created_records'].append(record)
-                    else:
-                        repeated = 0
+                    result['created_records'].append(record)
+                else:
+                    repeated = 0
 
         # pdb.set_trace()
         result['status'] = True
