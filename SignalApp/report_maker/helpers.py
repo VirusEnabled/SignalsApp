@@ -1235,9 +1235,15 @@ def get_entry_price(index:int, repeated:int,
     :param values: list
     :return: float
     """
-    divisor = len(values)
-    entry_price = float(sum(values[j].open for j in range(len(values)) if j <= index and
-                        j >= abs(index-repeated)) / divisor) if repeated > 1 else values[index].open
+    # entry_price = float(sum(values[j].open for j in range(len(values)) if j <= index and
+    #                     j >= abs(index-repeated)) / divisor) if repeated > 1 else values[index].open
+    entry_price = 0.00
+    if index == 0:
+        entry_price = values[0].open
+    else:
+        entry_price += sum(x.open for x in values[:index])/len(values[:index])
+
+    # pdb.set_trace()
     return entry_price
 
 def get_transaction_detail_status(record:HistoricalData, stop_loss:float,
@@ -1322,7 +1328,6 @@ def stack_equal(queryset):
 
     # pdb.set_trace()
     return records
-
 
 
 def calculate_tp_sl_on_records(start_date:datetime, symbol: str) -> dict:
