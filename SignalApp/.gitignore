@@ -1,8 +1,10 @@
 # Folders
 venv
+
 # migrations
 __pycache__
 logs
+
 
 # DB
 *.sqlite3

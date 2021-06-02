@@ -1386,8 +1386,8 @@ def calculate_tp_sl_on_records(start_date:datetime, symbol: str) -> dict:
 
                     # this should be added in the update version of the method
                     if record.status == 'close':
-                        record.closing_price = record.avg_price + record.adr * 2.0 if record.entry_type == 'COMPRA'\
-                            else record.avg_price - record.adr * 1.5
+                        record.closing_price = record.avg_price + existing_data[i].adr * 2.0 if record.entry_type == 'COMPRA'\
+                            else record.avg_price - existing_data[i].adr  * 1.5
                     # else:
                     #     earning_losing_value =
 
