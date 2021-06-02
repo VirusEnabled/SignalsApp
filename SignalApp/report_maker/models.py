@@ -130,6 +130,8 @@ class HistoricalData(BaseModel):
         return self.api_date.strftime("%Y-%m-%d %H:%m")
 
 
+
+
     # def save(self, force_insert=False, force_update=False, using=None,
     #          update_fields=None, **kwargs):
     #     try:
@@ -180,5 +182,9 @@ class HistoricalTransactionDetail(BaseModel):
     avg_price = models.FloatField(default=0.00)
     entry_type = models.CharField(max_length=100, default='')
     number_of_entry = models.IntegerField(default=0)
+    entry_price = models.FloatField(null=True)
+    closing_price = models.FloatField(null=True)
+    transaction_id = models.IntegerField(null=True)
+    earning_losing_value = models.FloatField(null=True)
 
 
