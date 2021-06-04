@@ -22,3 +22,23 @@ class HistoricalDataSerializer(ModelSerializer):
                   ]
         depth = 1
 
+
+class HistoricalDataTransactionDetailSerializer(ModelSerializer):
+    class Meta:
+        model = HistoricalTransactionDetail
+        fields = [
+            'historical_data',
+            'id_market',
+            'status',
+            'stop_loss_price',
+            'take_profit_price',
+            'avg_price',
+            'entry_type',
+            'number_of_entry',
+            'entry_price',
+            'closing_price',
+            'transaction_id',
+            'earning_losing_value',
+            'created_at'
+        ]
+        depth = 1

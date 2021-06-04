@@ -184,7 +184,59 @@ class HistoricalTransactionDetail(BaseModel):
     number_of_entry = models.IntegerField(default=0)
     entry_price = models.FloatField(null=True)
     closing_price = models.FloatField(null=True)
-    transaction_id = models.IntegerField(null=True)
+    transaction_id = models.IntegerField(null=True, default=1)
     earning_losing_value = models.FloatField(null=True)
 
 
+
+    @classmethod
+    def get_last_transaction(cls, symbol:str) -> object:
+        """
+        gets the last transaction by the given symbol
+        :param symbol: str
+        :return: object
+        """
+        records = [record for record in HistoricalTransactionDetail.objects.all()
+                   if record.historical_data.stock.symbol == symbol
+                   ]
+        ids = [record.id for record in records]
+        # records = HistoricalData.objects.filter(stock=Stock.objects.get(symbol=symbol))
+        last_transaction = records[ids.index(max(ids))] if records else None
+        return last_transaction
+
+    @staticmethod
+    def gen_transaction_id(symbol:str) -> int:
+        """
+        generates the transaction ID
+        for a record based on the existing scores
+        :return: int
+        """
+        last_transaction = HistoricalTransactionDetail.get_last_transaction(symbol=symbol)
+        transaction_id = 1
+        if last_transaction:
+            if last_transaction.transaction_id:
+                if last_transaction.status == 'close':
+                    transaction_id = last_transaction.transaction_id  + 1
+                    print(last_transaction.status,"CLOSED HERE",
+                          last_transaction.transaction_id, transaction_id)
+
+                else:
+                    print(last_transaction.status,"OPEN HERE")
+                    transaction_id = last_transaction.transaction_id
+        else:
+            transaction_id = None
+        return transaction_id
+
+    @classmethod
+    def get_open_values_from_open_transaction(cls, transaction_id:int, symbol:str):
+        """
+        gets the opening values from the given transaction as long
+        as the transaction is open
+        :param transaction_id: int
+        :return: list
+        """
+        opens  = [t.historical_data.open for t in
+            HistoricalTransactionDetail.objects.filter(transaction_id=transaction_id)
+                  if t.historical_data.stock.symbol == symbol
+                  ]
+        return opens
