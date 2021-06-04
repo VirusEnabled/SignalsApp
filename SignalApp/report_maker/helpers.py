@@ -1246,6 +1246,46 @@ def get_entry_price(index:int, repeated:int,
     # pdb.set_trace()
     return entry_price
 
+# modified for upgrade
+def _get_entry_price(index:int, values:list,
+                     transaction_id: int,
+                     stock:object,
+                     stored:bool) -> float:
+    """
+    calculates the entry price
+    needed for the given value
+
+    aggregating the ID of the transaction we
+    just need to look up for the value,
+    it's the same method, now we just look for the
+    item throu the database and calculate
+    based on the given ID the Avg amount which the
+    sum of all round(opens / len(opens), 2)
+
+    :param index: int
+    :param repeated: int
+    :param values: list
+    :return: float
+    """
+    entry_price = 0.00
+    xrange =  len(values) - 1 if len(values) > 1 else len(values)
+    if index == 0 and stored:
+        last_transaction = HistoricalTransactionDetail.get_last_transaction(symbol=stock.symbol)
+        if last_transaction.status == 'open':
+            opens = HistoricalTransactionDetail.get_open_values_from_open_transaction(transaction_id=transaction_id,
+                                                                                  symbol=stock.symbol)
+            entry_price = round(sum(opens) / len(opens),2)
+        else:
+            entry_price = round(values[index].open, 2)
+
+    elif index == 0:
+        entry_price = round(values[index].open, 2)
+    else:
+        opens = [val.open for val in reversed(values[:index+1 if index < xrange else xrange])]
+        entry_price = round(sum(opens) / len(opens), 2)
+
+    return entry_price
+
 def get_transaction_detail_status(record:HistoricalData,
                                   stop_loss:float,
                                   take_profit:float ) -> str:
@@ -1263,12 +1303,9 @@ def get_transaction_detail_status(record:HistoricalData,
     :param record: Django's object
     :return: str
     """
-
-    if record.bullet == 'RED':
-        result = 'close' if stop_loss <= record.low else 'open'
-
-    else:
-        result = 'close' if take_profit >= record.high else 'open'
+    # print("LOW",record.low, stop_loss, stop_loss<=record.low ,"ID",record.id)
+    result = 'close' if stop_loss<=record.low or take_profit >= record.high else 'open'
+    # print("HIGH",record.high, take_profit, take_profit >= record.high  ,"ID",record.id)
 
     return result
 
@@ -1331,7 +1368,7 @@ def stack_equal(queryset):
     return records
 
 # # old version before update
-def calculate_tp_sl_on_records(start_date:datetime, symbol: str) -> dict:
+def __calculate_tp_sl_on_records(start_date:datetime, symbol: str) -> dict:
     """
     calculates the take profit values and stop loss on the records
     that matches the given description
@@ -1420,6 +1457,14 @@ def find_concurrent_patterns(dataset: list, start_index: int=0,)-> dict:
     :param dataset:
     :param start_index:
     :return: dict
+
+        # identify the pattern:
+        # a white followed by at least 2 of either color if there's a traceback of a closed item
+        # so basically we need to be able to tell whether the pattern should be applied or not
+        # for that I need to know if I'm on a existing transaction or the last trasaction was closed.
+        # then if I'm on a open transaction, all I need to do is to calculate then check if the sstatus still open,
+        # if it changes, then I close the transaction and execute the conditioning where I'm ignoring records until
+        # I meet the pattern.
     """
     result = {'start_index': None}
     index_list = [i for i in range(len(dataset[start_index:]) - 2) if i >=start_index]
@@ -1440,7 +1485,8 @@ def find_concurrent_patterns(dataset: list, start_index: int=0,)-> dict:
 
     return result
 
-def _calculate_tp_sl(dataset:list, start_index: int) -> dict:
+def _calculate_tp_sl(dataset:list, stored:bool,
+                     start_index: int=0, transaction_id:int=1) -> dict:
     """
     calculates the take profit and stop loss
     based on the new updates provided list of values
@@ -1449,63 +1495,146 @@ def _calculate_tp_sl(dataset:list, start_index: int) -> dict:
     :param dataset:
     :param start_index:
     :return: dict
+
+    # this is related to another Model so don't concert yourself with it atm.
+    - Precio de entrada: Es el precio de open de la vela con el que inicia la transacción
+    (Solo se guardara 1 vez en la transacción con la que inicia el bloque)
+    - Precio de Salida: Este se calcula cuando se cierra la transacción y
+    se calcula asi: Si entry_type es Compra = Precio Promedio + (ADR * 2.0).
+    Si entry_type = Venta = Precio Promedio - (ADR * 1.5).
+    - Valor_Ganado/Perdido: (Precio de Salida * # de Unidades) - (Precio de entrada * # de Unidades)
     """
     result = {}
+    first_entry_price = dataset[start_index:][0].open
+    spectrum = len(dataset[start_index:])
     try:
-        pass
+        for idx, record in enumerate(dataset[start_index:]):
+            entry_price = _get_entry_price(index=idx,
+                                           values=dataset[start_index:],
+                                           transaction_id=transaction_id,
+                                           stock=record.stock,
+                                           stored=stored)
+
+            take_profit = entry_price + (float(record.adr) * 2) if record.bullet == "AZUL" else \
+                entry_price - (float(record.adr)* 1.5)
+
+            stop_loss = entry_price - (float(record.adr) * 1.5) if record.bullet == "AZUL" else \
+                entry_price + (float(record.adr) * 1.5)
+
+            transaction, created = HistoricalTransactionDetail.objects.get_or_create(
+                historical_data=record
+            )
+            """
+                  - Precio de entrada: Es el precio de open de la vela con el que inicia la transacción
+                  (Solo se guardara 1 vez en la transacción con la que inicia el bloque)
+                  - Precio de Salida: Este se calcula cuando se cierra la transacción y
+                   se calcula asi: Si entry_type es Compra = Precio Promedio + (ADR * 2.0).
+                   Si entry_type = Venta = Precio Promedio - (ADR * 1.5).
+                  - Valor_Ganado/Perdido: (Precio de Salida * # de Unidades) - (Precio de entrada * # de Unidades)
+            """
+
+            transaction.stop_loss_price = round(stop_loss,2)
+            transaction.take_profit_price = round(take_profit,2)
+            transaction.avg_price = round(entry_price,2)
+            transaction.transaction_id = transaction_id
+            transaction.status = get_transaction_detail_status(record=record,
+                                                          stop_loss=stop_loss,
+                                                          take_profit=take_profit)
+
+            if idx == 0 and transaction.status =='open':
+                transaction.entry_price = record.open
+
+            transaction.entry_type = 'VENTA' if record.bullet == 'ROJO' else 'COMPRA'
+
+            # this should be added in the update version of the method
+            if transaction.status == 'close':
+                transaction.closing_price = round(float(transaction.avg_price) + float(record.adr) * 2.0,2) if transaction.entry_type == 'COMPRA' \
+                    else round(float(transaction.avg_price) - float(record.adr) * 1.5,2)
+                transaction.earning_losing_value = round((transaction.closing_price * spectrum) -
+                                                         (first_entry_price *spectrum), 2)
+
+            if not created:
+                transaction.updated_at = datetime.now()
+
+            transaction.save()
+
+            if transaction.status == 'close' or idx == len(dataset[start_index:])-1:
+                result['closed'] = transaction.status == 'close'
+                result['stopped_at_index'] = dataset.index(record)
+                result['last_record'] = record
+                break
+
+        result['status'] = True
 
     except Exception as X:
         result['status'] = False
         result['traceback'] = X.__traceback__
         result['err_obj'] = X
         result['error'] = f"{X}"
+
+    # pdb.set_trace()
     return result
 
-def __calculate_tp_sl_on_records(start_date: datetime,
-                               symbol: str) -> dict:
+def calculate_tp_sl_on_records(start_date: datetime,
+                               symbol: str, stored:bool) -> dict:
     """
     calculates the take profit values and stop loss on the records
     that matches the given description
     :param start_date: datetime: the date to start fetching data and calculating from
     :return: dict
     """
-    result = {'created_records': []}
-    p_i = lambda i: i - 1 if i > 0 else 0
-    existing_data = Stock.objects.get(symbol=symbol).historicaldata_set.filter(api_date__gte=start_date.date())
-    serialized = stack_equal(existing_data)
-    last_transaction_open = False
-    transaction_id = 1
+    result = {}
+    existing_data = [r for r in Stock.objects.get(symbol=symbol).historicaldata_set.filter(api_date__gte=start_date.date())]
+    last_transaction = HistoricalTransactionDetail.get_last_transaction(symbol=symbol)
+    last_transaction_closed = last_transaction.status == 'open' if last_transaction else False
     start_index = 0
     finished = False
 
-    # calculate Stop Loss(SL) and Take Profit (TP)
-    repeated = 0
-
     try:
+        while not finished and len(existing_data) > 0:
+            transaction_id = HistoricalTransactionDetail.gen_transaction_id(symbol=symbol)  # need to check this
 
-        # identify the pattern:
-        # a white followed by at least 2 of either color if there's a traceback of a closed item
-        # so basically we need to be able to tell whether the pattern should be applied or not
-        # for that I need to know if I'm on a existing transaction or the last trasaction was closed.
-        # then if I'm on a open transaction, all I need to do is to calculate then check if the sstatus still open,
-        # if it changes, then I close the transaction and execute the conditioning where I'm ignoring records until
-        # I meet the pattern.
+            if last_transaction_closed:
+                last_x = last_transaction.historicaltransactiondetail.transaction_id
+                if(last_transaction.historicaltransactiondetail.status == 'close'
+                   and  last_x == transaction_id) or not transaction_id:
+                    if transaction_id:
+                        transaction_id += 1
+                    else:
+                        transaction_id = last_x + 1
 
-        """
-        - Precio de entrada: Es el precio de open de la vela con el que inicia la transacción
-        (Solo se guardara 1 vez en la transacción con la que inicia el bloque)
-        - Precio de Salida: Este se calcula cuando se cierra la transacción y
-         se calcula asi: Si entry_type es Compra = Precio Promedio + (ADR * 2.0).
-         Si entry_type = Venta = Precio Promedio - (ADR * 1.5).
-        - Valor_Ganado/Perdido: (Precio de Salida * # de Unidades) - (Precio de entrada * # de Unidades)
-        """
-        while not finished:
-            start_at = find_concurrent_patterns(dataset=existing_data,
-                                                start_index=start_index)
-            if not start_at['status']:
-                raise Exception(start_at['error'])
+                print(transaction_id, last_x,last_transaction.historicaltransactiondetail.status)
+                print(f"start index while finding pattern: {start_index}")
+                start_at = find_concurrent_patterns(dataset=existing_data,
+                                                    start_index=start_index)
+                if not start_at['status']:
+                    raise Exception(start_at['error'])
+                start_index = start_at['start_index']
+            print(f"START INDEX BEFORE CALCULATION: {start_index}, LEN :{len(existing_data[start_index:])}")
 
-        pass
+            tp_sl_result = _calculate_tp_sl(dataset=existing_data,
+                                            transaction_id=transaction_id,
+                                            start_index=start_index,
+                                            stored=stored
+                                            )
+
+            if not tp_sl_result['status']:
+                raise Exception(tp_sl_result['error'])
+
+            # need to check whether the transaction is closed or not
+            # if closed, I need to be able restart the whole process.
+            # if tp_sl_result['closed']:
+            start_index = tp_sl_result['stopped_at_index']
+            last_transaction_closed = tp_sl_result['closed']
+            last_transaction =tp_sl_result['last_record']
+            finished = tp_sl_result['last_record'] == existing_data[-1]
+
+            print(f"START INDEX AFTER CALCULATION: {start_index}, LEN: {len(existing_data[start_index:])}")
+            print(tp_sl_result, finished, symbol, transaction_id, "END TRANSACTION HERE")
+
+
+
+        result['status'] = True
 
     except Exception as X:
         result['status'] = False
@@ -1513,6 +1642,7 @@ def __calculate_tp_sl_on_records(start_date: datetime,
         result['err_obj'] = X
         result['error'] = f"{X}"
 
+    # pdb.set_trace()
     return result
 
 
@@ -1584,7 +1714,8 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
                     raise Exception(error)
                 else:
                     # pdb.set_trace()
-                    sl_tp_calculation = calculate_tp_sl_on_records(start_date=start_date, symbol=symbol)
+                    # sl_tp_calculation = calculate_tp_sl_on_records(start_date=start_date, symbol=symbol)  # old version
+                    sl_tp_calculation = calculate_tp_sl_on_records(start_date=start_date, symbol=symbol,stored=stored)
                     if not sl_tp_calculation['status']:
                         raise Exception(sl_tp_calculation['error'])
 
@@ -1597,8 +1728,7 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
         result['status'] = False
         result['error'] = f"{X}"
         result['traceback'] = X.__traceback__
-
-        # pdb.set_trace()
+        pdb.set_trace()
 
     finally:
         return result
