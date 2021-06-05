@@ -1799,9 +1799,10 @@ def refresh_stock_list():
             s, created = Stock.objects.get_or_create(
                 symbol=stock['symbol'],
             )
-            s.priority = Stock.choices[0] if  stock in high_priority else Stock.choices[1]
+            s.priority = Stock.choices[0] if stock['symbol'] in high_priority else Stock.choices[1]
             s.name = stock['name']
             s.stock_details = json.dumps(stock)
+            print(s.priority)
             if not created:
                 s.updated_at = datetime.now()
             s.save()
