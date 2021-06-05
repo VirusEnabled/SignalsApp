@@ -1466,16 +1466,30 @@ def find_concurrent_patterns(dataset: list, start_index: int=0,)-> dict:
         # if it changes, then I close the transaction and execute the conditioning where I'm ignoring records until
         # I meet the pattern.
     """
-    result = {'start_index': None}
-    index_list = [i for i in range(len(dataset[start_index:]) - 2) if i >=start_index]
+
+    result = {}
+    index_list = [i for i in range(start_index, len(dataset) - 2)]
+    # index_list = [dataset.index(i) for i in dataset if dataset.index(i) >= start_index]
+
     try:
         for i in index_list:
-            if dataset[i].bullet == 'BLANCO' and dataset[i + 1].bullet == dataset[i + 2].bullet:
+            # print(dataset[i].bullet,dataset[i + 1].bullet,dataset[i + 2].bullet )
+            if dataset[i].bullet == 'BLANCO' and (
+                            dataset[i + 1].bullet == dataset[i + 2].bullet and dataset[i+2].bullet != 'BLANCO' ):
                 # execute code to gather and calculate the values
-                print(dataset[i], dataset[i + 1], dataset[i + 2])
+                # print(dataset[i].bullet, dataset[i + 1].bullet, dataset[i + 2].bullet,"FOUNDDDDD")
+                # print(dataset[i], dataset[i + 1], dataset[i + 2])
                 result['start_index'] = i + 2
                 break
-        result['status'] = True
+            # print(dataset[i].bullet,dataset[i + 1].bullet,dataset[i + 2].bullet, 'NOT FOUNDDD')
+
+        if 'start_index' not in result.keys():
+            result['status'] = False
+            result['message'] = 'No items found in the pattern'
+            # pdb.set_trace()
+            # raise Exception('No items found in the pattern')
+        else:
+            result['status'] = True
 
     except Exception as X:
         result['status'] = False
@@ -1537,12 +1551,14 @@ def _calculate_tp_sl(dataset:list, stored:bool,
             transaction.take_profit_price = round(take_profit,2)
             transaction.avg_price = round(entry_price,2)
             transaction.transaction_id = transaction_id
+            transaction.id_market = record.stock.id
             transaction.status = get_transaction_detail_status(record=record,
                                                           stop_loss=stop_loss,
                                                           take_profit=take_profit)
 
             if idx == 0 and transaction.status =='open':
                 transaction.entry_price = record.open
+                transaction.number_of_unities = int(5000/record.open)
 
             transaction.entry_type = 'VENTA' if record.bullet == 'ROJO' else 'COMPRA'
 
@@ -1575,6 +1591,7 @@ def _calculate_tp_sl(dataset:list, stored:bool,
     # pdb.set_trace()
     return result
 
+# needs debugging
 def calculate_tp_sl_on_records(start_date: datetime,
                                symbol: str, stored:bool) -> dict:
     """
@@ -1591,27 +1608,27 @@ def calculate_tp_sl_on_records(start_date: datetime,
     finished = False
 
     try:
-        while not finished and len(existing_data) > 0:
-            transaction_id = HistoricalTransactionDetail.gen_transaction_id(symbol=symbol)  # need to check this
+        while not finished:
+            transaction_id = last_transaction.transaction_id + 1 if last_transaction_closed\
+                else last_transaction.transaction_id if last_transaction else 1
 
             if last_transaction_closed:
-                last_x = last_transaction.historicaltransactiondetail.transaction_id
-                if(last_transaction.historicaltransactiondetail.status == 'close'
-                   and  last_x == transaction_id) or not transaction_id:
-                    if transaction_id:
-                        transaction_id += 1
-                    else:
-                        transaction_id = last_x + 1
 
-                print(transaction_id, last_x,last_transaction.historicaltransactiondetail.status)
-                print(f"start index while finding pattern: {start_index}")
+                # print(f"start index while finding pattern: {start_index}")
+
+                # got a bug here because it returns none when it doesn't find the pattern.
                 start_at = find_concurrent_patterns(dataset=existing_data,
                                                     start_index=start_index)
-                if not start_at['status']:
-                    raise Exception(start_at['error'])
-                start_index = start_at['start_index']
-            print(f"START INDEX BEFORE CALCULATION: {start_index}, LEN :{len(existing_data[start_index:])}")
 
+                if not start_at['status'] and 'error' in start_at:
+                    raise Exception(start_at['error'])
+
+                elif not start_at['status']:
+                    finished = True
+                    continue
+                start_index = start_at['start_index']
+
+            # print(f"START INDEX BEFORE CALCULATION: {start_index}, LEN :{len(existing_data[start_index:])}")
             tp_sl_result = _calculate_tp_sl(dataset=existing_data,
                                             transaction_id=transaction_id,
                                             start_index=start_index,
@@ -1626,13 +1643,10 @@ def calculate_tp_sl_on_records(start_date: datetime,
             # if tp_sl_result['closed']:
             start_index = tp_sl_result['stopped_at_index']
             last_transaction_closed = tp_sl_result['closed']
-            last_transaction =tp_sl_result['last_record']
+            last_transaction = tp_sl_result['last_record'].historicaltransactiondetail
             finished = tp_sl_result['last_record'] == existing_data[-1]
-
-            print(f"START INDEX AFTER CALCULATION: {start_index}, LEN: {len(existing_data[start_index:])}")
-            print(tp_sl_result, finished, symbol, transaction_id, "END TRANSACTION HERE")
-
-
+            # print(f"START INDEX AFTER CALCULATION: {start_index}, LEN: {len(existing_data[start_index:])}")
+            # print(tp_sl_result, finished, symbol, transaction_id, "END TRANSACTION HERE")
 
         result['status'] = True
 
