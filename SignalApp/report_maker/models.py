@@ -132,19 +132,17 @@ class HistoricalData(BaseModel):
 
 
 
-    # def save(self, force_insert=False, force_update=False, using=None,
-    #          update_fields=None, **kwargs):
-    #     try:
-    #         obj = HistoricalData.objects.get(stock=self.stock, api_date=self.api_date)
-    #         if kwargs['create']:
-    #             raise Exception("The object you're trying to create already exists.")
-    #
-    #         else:
-    #             raise  models.ObjectDoesNotExist
-    #
-    #     except models.ObjectDoesNotExist:
-    #         return super().save(force_insert=force_insert,force_update=force_update,
-    #                      using=using,update_fields=update_fields)
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None, **kwargs):
+        rounding_fields = ['open','low','high','close','volume','rsi','adr','k','macd','signal'
+                           ]
+        for field in rounding_fields:
+            stringed = f"{self.__getattribute__(field)}"
+            setattr(self, field, float(stringed[:stringed.find('.')+3]))
+
+
+        return super().save(force_insert=force_insert,force_update=force_update,
+                     using=using,update_fields=update_fields)
 
 
 class StochasticIndicator(BaseModel):
@@ -181,13 +179,27 @@ class HistoricalTransactionDetail(BaseModel):
     take_profit_price = models.FloatField(default=0.00)
     avg_price = models.FloatField(default=0.00)
     entry_type = models.CharField(max_length=100, default='')
-    number_of_entry = models.IntegerField(default=0)
+    number_of_unities = models.IntegerField(default=0)
     entry_price = models.FloatField(null=True)
     closing_price = models.FloatField(null=True)
     transaction_id = models.IntegerField(null=True, default=1)
     earning_losing_value = models.FloatField(null=True)
 
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None, **kwargs):
+        rounding_fields = ['stop_loss_price', 'take_profit_price', 'avg_price', 'entry_price', 'closing_price',
+                           'earning_losing_value']
+        for field in rounding_fields:
+            value = self.__getattribute__(field)
+            if not value:
+                continue
 
+            stringed = str(value)
+            setattr(self, field, float(stringed[:stringed.find('.') + 3]))
+
+
+        return super().save(force_insert=force_insert, force_update=force_update,
+                            using=using, update_fields=update_fields)
 
     @classmethod
     def get_last_transaction(cls, symbol:str) -> object:
@@ -217,11 +229,8 @@ class HistoricalTransactionDetail(BaseModel):
             if last_transaction.transaction_id:
                 if last_transaction.status == 'close':
                     transaction_id = last_transaction.transaction_id  + 1
-                    print(last_transaction.status,"CLOSED HERE",
-                          last_transaction.transaction_id, transaction_id)
 
                 else:
-                    print(last_transaction.status,"OPEN HERE")
                     transaction_id = last_transaction.transaction_id
         else:
             transaction_id = None
