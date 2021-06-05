@@ -1304,7 +1304,7 @@ def get_transaction_detail_status(record:HistoricalData,
     :return: str
     """
     # print("LOW",record.low, stop_loss, stop_loss<=record.low ,"ID",record.id)
-    result = 'close' if stop_loss<=record.low or take_profit >= record.high else 'open'
+    result = 'close' if record.low <= stop_loss  or record.high >= take_profit  else 'open'
     # print("HIGH",record.high, take_profit, take_profit >= record.high  ,"ID",record.id)
 
     return result
@@ -1781,5 +1781,64 @@ def stock_excel_loader(excel_file:str, sheet_number:int=2):
         result['status'] = True
     except Exception as X:
         result['error'] = f"There was an error with your request {X}"
+
+    return result
+
+
+def refresh_stock_list():
+    """
+    refreshes the list of stocks in the db
+    :return: dict
+    """
+    result = {}
+    try:
+        stocks = DATA_API_OBJ.load_markets()
+        high_priority =[ h.replace(' ','') for h in open(f"{settings.BASE_DIR}/high_priority_stocks.csv",'r'
+                              ).read().replace('\n','').split(',')]
+        for stock in stocks:
+            s, created = Stock.objects.get_or_create(
+                symbol=stock
+            )
+            s.priority = Stock.choices[0] if  stock in high_priority else Stock.choices[1]
+            if not created:
+                s.updated_at = datetime.now()
+            s.save()
+        result['status'] = True
+
+    except Exception as X:
+        result['status'] = False
+        result['error'] = f"{X}"
+        result['traceback'] = X.__traceback__
+        pdb.set_trace()
+
+    return result
+
+def load_high_priority_stocks_by_file(file:str=f"{settings.BASE_DIR}/high_priority_stocks.csv"):
+    """
+    loads the stocks with highest priority
+    by reading the file and just updloading them to the DB
+    :param file: path of the file
+    :return: dict
+    """
+    result = {}
+    try:
+
+        stocks = [r.replace(' ','') for r in open(file,'r').read().replace('\n','').split(',')]
+        print(stocks)
+        for stock in stocks:
+            s, created = Stock.objects.get_or_create(
+                symbol=stock
+            )
+            s.priority = Stock.choices[0]
+            if not created:
+                s.updated_at = datetime.now()
+            s.save()
+        result['status'] = True
+
+    except Exception as X:
+        result['status'] = False
+        result['error'] = f"{X}"
+        result['traceback'] = X.__traceback__
+        pdb.set_trace()
 
     return result
