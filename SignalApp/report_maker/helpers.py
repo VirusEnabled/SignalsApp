@@ -1793,17 +1793,15 @@ def refresh_stock_list():
     result = {}
     try:
         stocks = DATA_API_OBJ.load_markets()
-        high_priority =[ h.replace(' ','') for h in open(f"{settings.BASE_DIR}/high_priority_stocks.csv",'r'
-                              ).read().replace('\n','').split(',')]
+        high_priority = open(f"{settings.BASE_DIR}/high_priority_stocks.csv",'r'
+                              ).read().split(',')
         for stock in stocks:
-            print(stock)
             s, created = Stock.objects.get_or_create(
                 symbol=stock['symbol'],
             )
             s.priority = Stock.choices[0] if  stock in high_priority else Stock.choices[1]
             s.name = stock['name']
             s.stock_details = json.dumps(stock)
-
             if not created:
                 s.updated_at = datetime.now()
             s.save()
