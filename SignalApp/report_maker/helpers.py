@@ -1558,7 +1558,7 @@ def _calculate_tp_sl(dataset:list, stored:bool,
 
             if idx == 0 and transaction.status =='open':
                 transaction.entry_price = record.open
-                transaction.number_of_unities = int(5000/record.open)
+                transaction.number_of_unities = int(5000/record.open) if record.open > 0.00 else 0
 
             transaction.entry_type = 'VENTA' if record.bullet == 'ROJO' else 'COMPRA'
 
