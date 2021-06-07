@@ -4,7 +4,7 @@ from .models import *
 class StockSerializer(ModelSerializer):
     class Meta:
         model = Stock
-        fields = ['symbol', 'stock_details','prty',
+        fields = ['id', 'symbol', 'stock_details','prty',
                   'created_at'
                   ]
         depth = 1
@@ -34,7 +34,7 @@ class HistoricalDataTransactionDetailSerializer(ModelSerializer):
             'take_profit_price',
             'avg_price',
             'entry_type',
-            'number_of_entry',
+            'number_of_unities',
             'entry_price',
             'closing_price',
             'transaction_id',
