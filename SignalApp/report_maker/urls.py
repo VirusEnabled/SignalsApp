@@ -17,5 +17,6 @@ urlpatterns = [
     path('generate_graphs', generate_graphs, name='generate_graphs'),
     path('api/',include((api_router.urls,'api_stocks')),name='api_stocks'),
     path('api/stock_handler/list', stock_list, name='stock_list'),
-    path('api/stock_handler/get_last_entry_record', get_last_entry_record, name='get_last_entry_record')
+    path('api/stock_handler/get_last_entry_record', get_last_entry_record, name='get_last_entry_record'),
+    path('api/stock_handler/get_entry_detail', get_entry_detail, name='get_entry_detail')
     ]+static(settings.STATIC_URL, document_root=settings.MEDIA_URL)
