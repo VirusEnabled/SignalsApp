@@ -355,8 +355,11 @@ def stock_list(request):
     :param request: http
     :return: json
     """
-    return Response(data=StockSerializer(instance=Stock.objects.all(),many=True).data,
+
+    return Response(data=StockSerializer(instance=Stock.objects.filter(priority=Stock.choices[0]),many=True).data,
                     status=status.HTTP_200_OK)
+
+
 
 @api_view(http_method_names=['GET'])
 def get_last_historical_record(request):
@@ -387,3 +390,97 @@ def get_last_historical_record(request):
         st = status.HTTP_500_INTERNAL_SERVER_ERROR
 
     return Response(data=response_data,status=st,content_type='json')
+
+
+
+@api_view(http_method_names=['GET'])
+def get_last_entry_record(request):
+    """
+    loads the latest transaction details
+    for each of the market symbols under analysis.
+
+    this for now won't have any authentication
+    but we'll try to keep it going further.
+    :param request: http request
+    :return: json
+    """
+    request_data = request.query_params
+    response_data = {}
+    st = status.HTTP_200_OK
+
+    try:
+        # last_record  = HistoricalTransactionDetail.objects.filter(id_market=request_data['id_market']).last()
+        # serialized = HistoricalDataTransactionDetailSerializer(instance=last_record)
+        misimbol = Stock.objects.get(symbol = request_data['id_market'])
+        ultima_entrada = HistoricalTransactionDetail.objects.filter(id_market=misimbol.id).last()
+        if ultima_entrada.status == 'close':
+            mi_id = ultima_entrada.id
+        else:
+            ultimo_grupo = HistoricalTransactionDetail.objects.filter(transaction_id=ultima_entrada.transaction_id).first()
+            mi_id = ultimo_grupo.id
+
+        print(mi_id)
+        response_data = HistoricalDataTransactionDetailSerializer(instance=HistoricalTransactionDetail.objects.get(id=mi_id)).data
+
+    except ObjectDoesNotExist:
+        response_data['error'] = 'The stock provided doesn\'t exist, try a different symbol.'
+        st = status.HTTP_404_NOT_FOUND
+
+    except Exception as X:
+        response_data['error']= f'There was an internal error {X}'
+        st = status.HTTP_500_INTERNAL_SERVER_ERROR
+
+    # return Response(data=response_data,status=st,content_type='json')
+    # return Response(data=StockSerializer(instance=Stock.objects.filter(priority=Stock.choices[0]),many=True).data,
+    #                 status=status.HTTP_200_OK)
+
+    
+    return Response(data=response_data,status=status.HTTP_200_OK)
+
+
+# class DetailViewSet(ViewSet):
+#     serializer_class = HistoricalDataTransactionDetailSerializer
+#     lookup_field = 'id'
+#     permission_classes = []
+#     queryset = HistoricalTransactionDetail.objects.all()
+#     # http_method_names = ['GET']
+
+
+#     def retrieve(self):
+#         """
+#         retrieves the same data of the stock
+#         but with the rest of the items
+#         :return:
+#         """
+#         return super().retrieve()
+
+# @api_view(http_method_names=['GET'])
+# def get_last_entry_record(request):
+#     """
+#     loads the latest transaction details
+#     for each of the market symbols under analysis.
+
+#     this for now won't have any authentication
+#     but we'll try to keep it going further.
+#     :param request: http request
+#     :return: json
+#     """
+#     request_data = request.query_params
+#     response_data = {}
+#     st = status.HTTP_200_OK
+
+#     try:
+#         last_record  = HistoricalTransactionDetail.objects.filter(id_market=request_data['id_market']).last()
+#         serialized = HistoricalDataTransactionDetailSerializer(instance=last_record)
+#         response_data['data'] = serialized.data
+
+#     except ObjectDoesNotExist:
+#         response_data['error'] = 'The stock provided doesn\'t exist, try a different symbol.'
+#         st = status.HTTP_404_NOT_FOUND
+
+#     except Exception as X:
+#         response_data['error']= f'There was an internal error {X}'
+#         st = status.HTTP_500_INTERNAL_SERVER_ERROR
+
+#     return Response(data=response_data,status=st,content_type='json')
+
