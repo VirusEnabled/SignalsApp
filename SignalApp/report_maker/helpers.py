@@ -1714,6 +1714,7 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
                     # data_container['model_data'] = [record for record in data_container['model_data']]
                     # data_container['model_data'].reverse()
 
+                # we got an issue here
                 operations = generate_statistical_indicators(data=data_container, stored=stored,
                                                              symbol=symbol,
                                                              start_date=start_date)
@@ -1727,9 +1728,9 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
                 if not status:
                     raise Exception(error)
                 else:
-                    # pdb.set_trace()
                     # sl_tp_calculation = calculate_tp_sl_on_records(start_date=start_date, symbol=symbol)  # old version
-                    sl_tp_calculation = calculate_tp_sl_on_records(start_date=start_date, symbol=symbol,stored=stored)
+                    sl_tp_calculation = calculate_tp_sl_on_records(start_date=start_date, symbol=symbol, stored=stored)
+                    # pdb.set_trace()
                     if not sl_tp_calculation['status']:
                         raise Exception(sl_tp_calculation['error'])
 
@@ -1742,7 +1743,7 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
         result['status'] = False
         result['error'] = f"{X}"
         result['traceback'] = X.__traceback__
-        pdb.set_trace()
+        # pdb.set_trace()
 
     finally:
         return result
@@ -1812,7 +1813,7 @@ def refresh_stock_list():
         result['status'] = False
         result['error'] = f"{X}"
         result['traceback'] = X.__traceback__
-        pdb.set_trace()
+        # pdb.set_trace()
 
     return result
 
@@ -1842,6 +1843,6 @@ def load_high_priority_stocks_by_file(file:str=f"{settings.BASE_DIR}/high_priori
         result['status'] = False
         result['error'] = f"{X}"
         result['traceback'] = X.__traceback__
-        pdb.set_trace()
+        # pdb.set_trace()
 
     return result
