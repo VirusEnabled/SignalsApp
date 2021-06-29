@@ -67,7 +67,7 @@ class Stock(BaseModel):
             v = stock.historicaldata_set.last().api_date
             result = v.month == refresh_time.month and v.year == refresh_time.year
         except Exception as X:
-            print(f"DEBUGGING: There was an error boi {X}")
+            print(f"DEBUGGING: There was an error boi: NOT STORED IN MODEL {X}")
 
         return result
 
