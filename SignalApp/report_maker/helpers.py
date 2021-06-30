@@ -400,7 +400,7 @@ def calculate_macd(data: pd.DataFrame) -> pd.DataFrame:
     macdx = ema12 - ema26
     signal = macdx.ewm(span=5, adjust=False).mean()
     resultant_data = macd(close=data['close'].astype(float),fast=8, slow=21,signal=5)
-    # pdb.set_trace()
+    # ()
 
     result = pd.DataFrame(data={'macd': macdx, 'signal':signal,'datetime':data['datetime']})
     # result = pd.DataFrame(data={'macd': resultant_data['MACD_8_21_5'],
@@ -624,7 +624,7 @@ def generate_statistical_indicators(data: dict, stored:bool =False,**kwargs) -> 
             final_container = data['model_data'] + data['api_data']
             processed_data = pd.DataFrame(data=final_container).dropna()
 
-        # pdb.set_trace()
+        # ()
 
         result = dict(stochastic=calculate_stochastic(data=processed_data,
                                                       stored=stored,
@@ -665,7 +665,7 @@ def generate_statistical_indicators(data: dict, stored:bool =False,**kwargs) -> 
         result['error'] = f"There was an error in the execution: {X}"
         result['status'] = False
         result['traceback'] = X.__traceback__
-        # pdb.set_trace()
+        # ()
 
     return result
 
@@ -1243,7 +1243,7 @@ def get_entry_price(index:int, repeated:int,
     else:
         entry_price += sum(x.open for x in values[:index])/len(values[:index])
 
-    # pdb.set_trace()
+    # ()
     return entry_price
 
 # modified for upgrade
@@ -1360,11 +1360,11 @@ def stack_equal(queryset):
                 values = organize_transaction_data(values)
                 records.append(values)
                 print("SUPPOSEDLY ADDED VALUES TO LIST")
-            # pdb.set_trace()
+            # ()
             node = None
             current = None
 
-    # pdb.set_trace()
+    # ()
     return records
 
 # # old version before update
@@ -1437,7 +1437,7 @@ def __calculate_tp_sl_on_records(start_date:datetime, symbol: str) -> dict:
                 else:
                     repeated = 0
 
-        # pdb.set_trace()
+        # ()
         result['status'] = True
 
     except Exception as X:
@@ -1445,7 +1445,7 @@ def __calculate_tp_sl_on_records(start_date:datetime, symbol: str) -> dict:
         result['traceback'] = X.__traceback__
         result['err_obj'] = X
         result['error'] = f"{X}"
-        # pdb.set_trace()
+        # ()
 
 
     return result
@@ -1486,7 +1486,7 @@ def find_concurrent_patterns(dataset: list, start_index: int=0,)-> dict:
         if 'start_index' not in result.keys():
             result['status'] = False
             result['message'] = 'No items found in the pattern'
-            # pdb.set_trace()
+            # ()
             # raise Exception('No items found in the pattern')
         else:
             result['status'] = True
@@ -1523,17 +1523,12 @@ def _calculate_tp_sl(dataset:list, stored:bool,
     spectrum = len(dataset[start_index:])
     try:
         for idx, record in enumerate(dataset[start_index:]):
+            last_transaction = HistoricalTransactionDetail.get_last_transaction(symbol=record.stock.symbol)
             entry_price = _get_entry_price(index=idx,
                                            values=dataset[start_index:],
                                            transaction_id=transaction_id,
                                            stock=record.stock,
                                            stored=stored)
-
-            take_profit = entry_price + (float(record.adr) * 2) if record.bullet == "AZUL" else \
-                entry_price - (float(record.adr)* 1.5)
-
-            stop_loss = entry_price - (float(record.adr) * 1.5) if record.bullet == "AZUL" else \
-                entry_price + (float(record.adr) * 1.5)
 
             transaction, created = HistoricalTransactionDetail.objects.get_or_create(
                 historical_data=record
@@ -1547,6 +1542,26 @@ def _calculate_tp_sl(dataset:list, stored:bool,
                   - Valor_Ganado/Perdido: (Precio de Salida * # de Unidades) - (Precio de entrada * # de Unidades)
             """
 
+            if last_transaction and last_transaction.status == 'close':
+                transaction.entry_type = 'VENTA' if record.bullet == 'ROJO' else 'COMPRA'
+                # print(transaction_id, last_transaction, last_transaction.transaction_id,
+                #       last_transaction.entry_price,entry_price)
+
+            elif not last_transaction:
+                transaction.entry_type = 'VENTA' if record.bullet == 'ROJO' else 'COMPRA'
+
+            else:
+                transaction.entry_type = last_transaction.entry_type
+                # print(transaction, transaction_id, transaction.entry_type, record.bullet, last_transaction.entry_price,
+                #       entry_price)
+
+            take_profit = entry_price + (float(record.adr) * 2) if transaction.entry_type == 'COMPRA' else \
+                entry_price - (float(record.adr) * 1.5)
+
+            stop_loss = entry_price - (float(record.adr) * 1.5) if transaction.entry_type == 'COMPRA' else \
+                entry_price + (float(record.adr) * 1.5)
+
+
             transaction.stop_loss_price = round(stop_loss,2)
             transaction.take_profit_price = round(take_profit,2)
             transaction.avg_price = round(entry_price,2)
@@ -1556,11 +1571,13 @@ def _calculate_tp_sl(dataset:list, stored:bool,
                                                           stop_loss=stop_loss,
                                                           take_profit=take_profit)
 
+
+            # if record.api_date.isoformat() >= "2021-01-04T15:30:00":
+            #     ()
+
             if idx == 0 and transaction.status =='open':
                 transaction.entry_price = record.open
                 transaction.number_of_unities = int(5000/record.open) if record.open > 0.00 else 0
-
-            transaction.entry_type = 'VENTA' if record.bullet == 'ROJO' else 'COMPRA'
 
             # this should be added in the update version of the method
             if transaction.status == 'close':
@@ -1588,7 +1605,7 @@ def _calculate_tp_sl(dataset:list, stored:bool,
         result['err_obj'] = X
         result['error'] = f"{X}"
 
-    # pdb.set_trace()
+    # ()
     return result
 
 # needs debugging
@@ -1656,7 +1673,7 @@ def calculate_tp_sl_on_records(start_date: datetime,
         result['err_obj'] = X
         result['error'] = f"{X}"
 
-    # pdb.set_trace()
+    # ()
     return result
 
 
@@ -1730,7 +1747,7 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
                 else:
                     # sl_tp_calculation = calculate_tp_sl_on_records(start_date=start_date, symbol=symbol)  # old version
                     sl_tp_calculation = calculate_tp_sl_on_records(start_date=start_date, symbol=symbol, stored=stored)
-                    # pdb.set_trace()
+                    # ()
                     if not sl_tp_calculation['status']:
                         raise Exception(sl_tp_calculation['error'])
 
@@ -1743,7 +1760,7 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
         result['status'] = False
         result['error'] = f"{X}"
         result['traceback'] = X.__traceback__
-        # pdb.set_trace()
+        # ()
 
     finally:
         return result
@@ -1813,7 +1830,7 @@ def refresh_stock_list():
         result['status'] = False
         result['error'] = f"{X}"
         result['traceback'] = X.__traceback__
-        # pdb.set_trace()
+        # ()
 
     return result
 
@@ -1843,6 +1860,6 @@ def load_high_priority_stocks_by_file(file:str=f"{settings.BASE_DIR}/high_priori
         result['status'] = False
         result['error'] = f"{X}"
         result['traceback'] = X.__traceback__
-        # pdb.set_trace()
+        # ()
 
     return result
