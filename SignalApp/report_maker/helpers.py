@@ -1274,7 +1274,10 @@ def _get_entry_price(index:int, values:list,
         if last_transaction.status == 'open':
             opens = HistoricalTransactionDetail.get_open_values_from_open_transaction(transaction_id=transaction_id,
                                                                                   symbol=stock.symbol)
-            entry_price = round(sum(opens) / len(opens),2)
+            if len(opens) == 0:
+                entry_price = 0.00
+            else:
+                entry_price = round(sum(opens) / len(opens), 2)
         else:
             entry_price = round(values[index].open, 2)
 
@@ -1282,7 +1285,10 @@ def _get_entry_price(index:int, values:list,
         entry_price = round(values[index].open, 2)
     else:
         opens = [val.open for val in reversed(values[:index+1 if index < xrange else xrange])]
-        entry_price = round(sum(opens) / len(opens), 2)
+        if len(opens) == 0:
+            entry_price = 0.00
+        else:
+            entry_price = round(sum(opens) / len(opens), 2)
 
     return entry_price
 
@@ -1542,14 +1548,15 @@ def _calculate_tp_sl(dataset:list, stored:bool,
                   - Valor_Ganado/Perdido: (Precio de Salida * # de Unidades) - (Precio de entrada * # de Unidades)
             """
 
-            if last_transaction and last_transaction.status == 'close':
+            if not last_transaction:
+                transaction.entry_type = 'VENTA' if record.bullet == 'ROJO' else 'COMPRA'
+
+
+
+            elif last_transaction and last_transaction.status == 'close':
                 transaction.entry_type = 'VENTA' if record.bullet == 'ROJO' else 'COMPRA'
                 # print(transaction_id, last_transaction, last_transaction.transaction_id,
                 #       last_transaction.entry_price,entry_price)
-
-            elif not last_transaction:
-                transaction.entry_type = 'VENTA' if record.bullet == 'ROJO' else 'COMPRA'
-
             else:
                 transaction.entry_type = last_transaction.entry_type
             print(transaction, transaction_id, transaction.entry_type, record.bullet, last_transaction.entry_price,
