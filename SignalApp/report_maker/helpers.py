@@ -1552,8 +1552,8 @@ def _calculate_tp_sl(dataset:list, stored:bool,
 
             else:
                 transaction.entry_type = last_transaction.entry_type
-                # print(transaction, transaction_id, transaction.entry_type, record.bullet, last_transaction.entry_price,
-                #       entry_price)
+            print(transaction, transaction_id, transaction.entry_type, record.bullet, last_transaction.entry_price,
+                  entry_price)
 
             take_profit = entry_price + (float(record.adr) * 2) if transaction.entry_type == 'COMPRA' else \
                 entry_price - (float(record.adr) * 1.5)
@@ -1742,16 +1742,12 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
                                                 update=stored)
 
                 result['status'] = status
+                result['start_date'] = start_date
+
                 if not status:
                     raise Exception(error)
-                else:
-                    # sl_tp_calculation = calculate_tp_sl_on_records(start_date=start_date, symbol=symbol)  # old version
-                    sl_tp_calculation = calculate_tp_sl_on_records(start_date=start_date, symbol=symbol, stored=stored)
-                    # ()
-                    if not sl_tp_calculation['status']:
-                        raise Exception(sl_tp_calculation['error'])
 
-                    print(f"Data for symbol: {symbol}, has been successfully added to the DB"
+                print(f"Data for symbol: {symbol}, has been successfully added to the DB"
                           f" with the intervals {start_date} to {end_date}.")
             else:
                 raise Exception(api_data)
@@ -1764,6 +1760,35 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
 
     finally:
         return result
+
+
+def calculate_transactions_for_symbols(start_date:datetime, symbols:list)->dict:
+    """
+    calculates the transactions for all given symbols
+    based on the start_date
+    :param start_date: datetime
+    :param symbols: list
+    :return: dict
+    """
+    stored = True
+    result = {}
+    try:
+        for symbol in symbols:
+            sl_tp_calculation = calculate_tp_sl_on_records(start_date=start_date,
+                                                           symbol=symbol,
+                                                           stored=stored)
+            if not sl_tp_calculation['status']:
+                raise Exception(sl_tp_calculation['error'])
+
+        result['status'] = True
+        result['message'] = f'Transaction details Successfully generated from {start_date.isoformat()}'
+    except Exception as X:
+        result['status'] = False
+        result['error'] = f"{X}"
+        result['traceback'] = X.__traceback__
+        # ()
+
+    return result
 
 def stock_excel_loader(excel_file:str, sheet_number:int=2):
     """
