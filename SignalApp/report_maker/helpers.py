@@ -1559,7 +1559,8 @@ def _calculate_tp_sl(dataset:list, stored:bool,
                 #       last_transaction.entry_price,entry_price)
             else:
                 transaction.entry_type = last_transaction.entry_type
-            print(transaction, transaction_id, transaction.entry_type, record.bullet, last_transaction.entry_price,
+            print(transaction, transaction_id, transaction.entry_type, record.bullet,
+                  last_transaction.entry_price if last_transaction else "THE LAST TRANSACTION IS NONE",
                   entry_price)
 
             take_profit = entry_price + (float(record.adr) * 2) if transaction.entry_type == 'COMPRA' else \
