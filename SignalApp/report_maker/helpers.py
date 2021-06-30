@@ -1271,7 +1271,7 @@ def _get_entry_price(index:int, values:list,
     xrange =  len(values) - 1 if len(values) > 1 else len(values)
     if index == 0 and stored:
         last_transaction = HistoricalTransactionDetail.get_last_transaction(symbol=stock.symbol)
-        if last_transaction.status == 'open':
+        if last_transaction and last_transaction.status == 'open':
             opens = HistoricalTransactionDetail.get_open_values_from_open_transaction(transaction_id=transaction_id,
                                                                                   symbol=stock.symbol)
             if len(opens) == 0:
