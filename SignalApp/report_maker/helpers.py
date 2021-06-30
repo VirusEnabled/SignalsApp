@@ -1780,7 +1780,8 @@ def calculate_transactions_for_symbols(start_date:datetime, symbols:list)->dict:
             if not sl_tp_calculation['status']:
                 raise Exception(sl_tp_calculation['error'])
 
-
+        result['status'] = True
+        result['message'] = f'Transaction details Successfully generated from {start_date.isoformat()}'
     except Exception as X:
         result['status'] = False
         result['error'] = f"{X}"
