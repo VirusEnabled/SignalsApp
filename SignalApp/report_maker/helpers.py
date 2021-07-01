@@ -1122,7 +1122,7 @@ def get_current_ny_time(date_time: datetime=datetime.now()):
     return (final_time.astimezone(eastern_time)- timedelta(hours=reducible)).strftime("%Y-%m-%d %H:%M")
 
 
-def generate_time_intervals_for_api_query():
+def generate_time_intervals_for_api_query(symbol:str):
     """
     generates the start_date and end_date
     for the API requests executed with celery
@@ -1148,24 +1148,39 @@ def generate_time_intervals_for_api_query():
 
      so basically the snapshot works closely with the current date the server has or the
      current datetime there is in new york
+
+     :params: symbol: str
     :return: dict
     """
     final_result = {}
     try:
         today = get_current_ny_time(date_time=datetime.today())
-        _start_date = datetime(year=datetime.now().year-1,month=1,day=4,hour=9,minute=30)
+        _start_date = datetime(year=datetime.now().year-1,month=1,day=4,hour=9,minute=30)  # default date
         start_date = get_current_ny_time(_start_date)
         end_date = today
+        stock = Stock.objects.get(symbol=symbol)
+        populated = Stock.has_historical_data(symbol=symbol)
         status, result = settings.REDIS_OBJ.get_last_fetched_time()
         if not status and 'error' in result.keys():
             raise Exception(result['error'])
 
         elif not status:
-            if not result['last_refresh_time_celery']:
+            if not populated:
                 final_result['start_date'] = datetime.fromisoformat(start_date)
-                final_result['end_date'] = datetime.fromisoformat(end_date)
+
+            else:
+                final_result['start_date'] = (stock.historicaldata_set.last().api_date if
+                                              not result['last_refresh_time_celery']
+                                              else result['last_refresh_time_celery'])
+            final_result['end_date'] = datetime.fromisoformat(end_date)
+
         else:
-            final_result['start_date'] = datetime.fromisoformat(result['last_refresh_time_celery'])
+            x = datetime.fromisoformat(result['last_refresh_time_celery'])
+            default_date = datetime.fromisoformat(get_current_ny_time(_start_date))
+            last_input_date = stock.historicaldata_set.last().api_date if populated else None
+            final_result['start_date'] = (default_date if not populated else last_input_date
+                                                        if last_input_date and last_input_date <= x else x)
+
             final_result['end_date'] = datetime.fromisoformat(end_date)
             if final_result['start_date'] > final_result['end_date']:
                 s = final_result.pop('start_date')
@@ -1703,29 +1718,30 @@ def fetch_markets_data(symbols:list, interval: str='1h') -> dict:
     window = 30
 
     try:
-        dates = generate_time_intervals_for_api_query()
-        print(dates)
-        if not dates['status']:
-            raise Exception(dates['error'])
-
-        start_date = dates['start_date']-timedelta(days=1) if dates['start_date'].date() == datetime.today().date() \
-                        and (dates['start_date'].hour > 18 or dates['start_date'].hour < 9) else dates['start_date']
-
-        end_date = dates['end_date']
 
         for symbol in symbols:
+            dates = generate_time_intervals_for_api_query(symbol=symbol)
+            print(dates)
+            if not dates['status']:
+                raise Exception(dates['error'])
+
+            start_date = dates['start_date'] - timedelta(days=1) if dates[
+                                                                        'start_date'].date() == datetime.today().date() \
+                                                                    and (dates['start_date'].hour > 18 or dates[
+                'start_date'].hour < 9) else dates['start_date']
+
+            end_date = dates['end_date']
+
+            stored = Stock.has_historical_data(symbol=symbol)
+
             status, api_data = DATA_API_OBJ.live_market_data_getter(symbol=symbol, start_date=start_date,
                                                                     end_date=end_date, interval=interval)
             if status:
                 data_container = {}
-                stored = False
                 stock_details = api_data['stock_details']
                 data_container['api_data'] = api_data['data']
-                #
-                if(start_date.year == end_date.year and
-                       Stock.listed_last_historical_data_fetch(symbol=symbol, refresh_time=start_date)):
-                    stored = True
-                    #
+
+                if stored:
                     # obj = Stock.objects.get(symbol=symbol)
 
                     # here's the problem with the time formatting.

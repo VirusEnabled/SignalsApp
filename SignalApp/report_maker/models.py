@@ -71,6 +71,21 @@ class Stock(BaseModel):
 
         return result
 
+    @staticmethod
+    def has_historical_data(symbol: str) -> bool:
+        """
+        verifies if the db has records available
+        :param symbol: str
+        :param refresh_time: datetime
+        :return: bool
+        """
+        result = False
+        try:
+            stock = Stock.objects.get(symbol=symbol)
+            result = True if stock.historicaldata_set.last() else False
+        except Exception as X:
+            print(f"DEBUGGING: There was an error boi: NOT STORED IN MODEL {X}")
+        return result
 
 class HistoricalData(BaseModel):
     choices = [('HIGH', 'HIGH'),
