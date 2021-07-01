@@ -1637,11 +1637,12 @@ def calculate_tp_sl_on_records(start_date: datetime,
             transaction_id = last_transaction.transaction_id + 1 if last_transaction_closed\
                 else last_transaction.transaction_id if last_transaction else 1
 
+            # transaction_id = HistoricalTransactionDetail.gen_transaction_id(symbol)
+
             if last_transaction_closed:
 
                 # print(f"start index while finding pattern: {start_index}")
 
-                # got a bug here because it returns none when it doesn't find the pattern.
                 start_at = find_concurrent_patterns(dataset=existing_data,
                                                     start_index=start_index)
 
