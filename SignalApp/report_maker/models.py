@@ -138,7 +138,7 @@ class HistoricalData(BaseModel):
                            ]
         for field in rounding_fields:
             stringed = f"{self.__getattribute__(field)}"
-            setattr(self, field, float(stringed[:stringed.find('.')+3]))
+            setattr(self, field, float(stringed[:stringed.find('.')+5]))
 
 
         return super().save(force_insert=force_insert,force_update=force_update,
@@ -195,11 +195,12 @@ class HistoricalTransactionDetail(BaseModel):
                 continue
 
             stringed = str(value)
-            setattr(self, field, float(stringed[:stringed.find('.') + 3]))
+            setattr(self, field, float(stringed[:stringed.find('.') + 5]))
 
 
         return super().save(force_insert=force_insert, force_update=force_update,
                             using=using, update_fields=update_fields)
+
 
     @classmethod
     def get_last_transaction(cls, symbol:str) -> object:
@@ -208,14 +209,12 @@ class HistoricalTransactionDetail(BaseModel):
         :param symbol: str
         :return: object
         """
-        records = [record for record in HistoricalTransactionDetail.objects.all()
-                   if record.historical_data.stock.symbol == symbol
-                   ]
-        ids = [record.id for record in records]
-        # records = HistoricalData.objects.filter(stock=Stock.objects.get(symbol=symbol))
-        last_transaction = records[ids.index(max(ids))] if records else None
+        stock = Stock.objects.get(symbol=symbol)
+        records = HistoricalTransactionDetail.objects.filter(id_market=stock.id)
+        last_transaction = records.last()
         return last_transaction
 
+    # needs debugging
     @staticmethod
     def gen_transaction_id(symbol:str) -> int:
         """
@@ -232,8 +231,7 @@ class HistoricalTransactionDetail(BaseModel):
 
                 else:
                     transaction_id = last_transaction.transaction_id
-        else:
-            transaction_id = None
+
         return transaction_id
 
     @classmethod
