@@ -1292,18 +1292,18 @@ def _get_entry_price(index:int, values:list,
             if len(opens) == 0:
                 entry_price = 0.00
             else:
-                entry_price = round(sum(opens) / len(opens), 2)
+                entry_price = round(sum(opens) / len(opens), 4)
         else:
-            entry_price = round(values[index].open, 2)
+            entry_price = round(values[index].open, 4)
 
     elif index == 0:
-        entry_price = round(values[index].open, 2)
+        entry_price = round(values[index].open, 4)
     else:
         opens = [val.open for val in reversed(values[:index+1 if index < xrange else xrange])]
         if len(opens) == 0:
             entry_price = 0.00
         else:
-            entry_price = round(sum(opens) / len(opens), 2)
+            entry_price = round(sum(opens) / len(opens), 4)
 
     return entry_price
 
@@ -1574,6 +1574,7 @@ def _calculate_tp_sl(dataset:list, stored:bool,
                 #       last_transaction.entry_price,entry_price)
             else:
                 transaction.entry_type = last_transaction.entry_type
+
             print(transaction, transaction_id, transaction.entry_type, record.bullet,
                   last_transaction.entry_price if last_transaction else "THE LAST TRANSACTION IS NONE",
                   entry_price)
@@ -1585,9 +1586,9 @@ def _calculate_tp_sl(dataset:list, stored:bool,
                 entry_price + (float(record.adr) * 1.5)
 
 
-            transaction.stop_loss_price = round(stop_loss,2)
-            transaction.take_profit_price = round(take_profit,2)
-            transaction.avg_price = round(entry_price,2)
+            transaction.stop_loss_price = round(stop_loss,4)
+            transaction.take_profit_price = round(take_profit,4)
+            transaction.avg_price = round(entry_price,4)
             transaction.transaction_id = transaction_id
             transaction.id_market = record.stock.id
             transaction.status = get_transaction_detail_status(record=record,
@@ -1604,10 +1605,10 @@ def _calculate_tp_sl(dataset:list, stored:bool,
 
             # this should be added in the update version of the method
             if transaction.status == 'close':
-                transaction.closing_price = round(float(transaction.avg_price) + float(record.adr) * 2.0,2) if transaction.entry_type == 'COMPRA' \
-                    else round(float(transaction.avg_price) - float(record.adr) * 1.5,2)
+                transaction.closing_price = round(float(transaction.avg_price) + float(record.adr) * 2.0,4) if transaction.entry_type == 'COMPRA' \
+                    else round(float(transaction.avg_price) - float(record.adr) * 1.5,4)
                 transaction.earning_losing_value = round((transaction.closing_price * spectrum) -
-                                                         (first_entry_price *spectrum), 2)
+                                                         (first_entry_price *spectrum), 4)
 
             if not created:
                 transaction.updated_at = datetime.now()
