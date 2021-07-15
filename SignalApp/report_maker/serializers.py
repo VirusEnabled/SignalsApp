@@ -42,3 +42,29 @@ class HistoricalDataTransactionDetailSerializer(ModelSerializer):
             'created_at'
         ]
         depth = 1
+
+
+class ConsolidatedTransactionsSerializer(ModelSerializer):
+    class Meta:
+        model = ConsolidatedTransactions
+        fields = [
+        'stock_id',
+        'net_profit',
+        'gross_profit',
+        'gross_loss',
+        'profit_factor',
+        'total_closed_trades',
+        'total_open_trades',
+        'number_winning_trades',
+        'number_losing_trades',
+        'percent_profitable',
+        'average_trade',
+        'average_winning_trade',
+        'average_losing_trades',
+        'ratio_avg_win_avg_loss',
+        'largest_winning_trades',
+        'largest_losing_trade',
+        'avg_bars_winning',
+        'avg_bars_losing'
+        ]
+        depth = 1

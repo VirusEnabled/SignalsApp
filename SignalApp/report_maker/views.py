@@ -419,8 +419,46 @@ def get_last_entry_record(request):
             ultimo_grupo = HistoricalTransactionDetail.objects.filter(transaction_id=ultima_entrada.transaction_id).first()
             mi_id = ultimo_grupo.id
 
-        print(mi_id)
         response_data = HistoricalDataTransactionDetailSerializer(instance=HistoricalTransactionDetail.objects.get(id=mi_id)).data
+
+    except ObjectDoesNotExist:
+        response_data['error'] = 'The stock provided doesn\'t exist, try a different symbol.'
+        st = status.HTTP_404_NOT_FOUND
+
+    except Exception as X:
+        response_data['error']= f'There was an internal error {X}'
+        st = status.HTTP_500_INTERNAL_SERVER_ERROR
+
+    # return Response(data=response_data,status=st,content_type='json')
+    # return Response(data=StockSerializer(instance=Stock.objects.filter(priority=Stock.choices[0]),many=True).data,
+    #                 status=status.HTTP_200_OK)
+
+    
+    return Response(data=response_data,status=status.HTTP_200_OK)
+
+
+@api_view(http_method_names=['GET'])
+def get_entry_detail(request):
+    """
+    loads the latest transaction details
+    for each of the market symbols under analysis.
+
+    this for now won't have any authentication
+    but we'll try to keep it going further.
+    :param request: http request
+    :return: json
+    """
+    request_data = request.query_params
+    response_data = {}
+    st = status.HTTP_200_OK
+
+    try:
+        # last_record  = HistoricalTransactionDetail.objects.filter(id_market=request_data['id_market']).last()
+        # serialized = HistoricalDataTransactionDetailSerializer(instance=last_record)
+        misimbol = Stock.objects.get(symbol = request_data['id_market'])
+       
+        # response_data = ConsolidatedTransactionsSerializer(instance=ConsolidatedTransactions.objects.get(stock_id=misimbol['id'])).data
+        response_data = ConsolidatedTransactionsSerializer(instance=ConsolidatedTransactions.objects.get(stock_id=misimbol.id)).data
 
     except ObjectDoesNotExist:
         response_data['error'] = 'The stock provided doesn\'t exist, try a different symbol.'

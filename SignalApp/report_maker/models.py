@@ -262,3 +262,23 @@ class HistoricalTransactionDetail(BaseModel):
                   if t.historical_data.stock.symbol == symbol
                   ]
         return opens
+
+class ConsolidatedTransactions(BaseModel):
+    stock_id = models.IntegerField(default=0)
+    net_profit = models.FloatField(default=0.00)
+    gross_profit = models.FloatField(default=0.00)
+    gross_loss = models.FloatField(default=0.00)
+    profit_factor = models.FloatField(default=0.00)
+    total_closed_trades = models.FloatField(default=0.00)
+    total_open_trades = models.FloatField(default=0.00)
+    number_winning_trades = models.FloatField(default=0.00)
+    number_losing_trades = models.FloatField(default=0.00)
+    percent_profitable = models.FloatField(default=0.00)
+    average_trade = models.FloatField(default=0.00)
+    average_winning_trade = models.FloatField(default=0.00)
+    average_losing_trades = models.FloatField(default=0.00)
+    ratio_avg_win_avg_loss = models.FloatField(default=0.00)
+    largest_winning_trades = models.FloatField(default=0.00)
+    largest_losing_trade = models.FloatField(default=0.00)
+    avg_bars_winning = models.FloatField(default=0.00)
+    avg_bars_losing = models.FloatField(default=0.00)
