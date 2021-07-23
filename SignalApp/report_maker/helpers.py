@@ -1495,12 +1495,12 @@ def find_concurrent_patterns(dataset: list, start_index: int=0,)-> dict:
     try:
         for i in index_list:
             # print(dataset[i].bullet,dataset[i + 1].bullet,dataset[i + 2].bullet )
-            if dataset[i].bullet == 'BLANCO' and (
-                            dataset[i + 1].bullet == dataset[i + 2].bullet and dataset[i+2].bullet != 'BLANCO' ):
+            if dataset[i].bullet == 'BLANCO' and dataset[i+1].bullet != 'BLANCO' :
                 # execute code to gather and calculate the values
                 # print(dataset[i].bullet, dataset[i + 1].bullet, dataset[i + 2].bullet,"FOUNDDDDD")
                 # print(dataset[i], dataset[i + 1], dataset[i + 2])
                 result['start_index'] = i + 2
+                result['transaction_type'] = 'COMPRA' if dataset[i+1].bullet == 'AZUL' else 'VENTA'
                 break
             # print(dataset[i].bullet,dataset[i + 1].bullet,dataset[i + 2].bullet, 'NOT FOUNDDD')
 
@@ -1520,7 +1520,7 @@ def find_concurrent_patterns(dataset: list, start_index: int=0,)-> dict:
 
     return result
 
-def _calculate_tp_sl(dataset:list, stored:bool,
+def _calculate_tp_sl(dataset:list, stored:bool,transaction_type:str,
                      start_index: int=0, transaction_id:int=1) -> dict:
     """
     calculates the take profit and stop loss
@@ -1564,12 +1564,16 @@ def _calculate_tp_sl(dataset:list, stored:bool,
             """
 
             if not last_transaction:
-                transaction.entry_type = 'VENTA' if record.bullet == 'ROJO' else 'COMPRA'
+                # transaction.entry_type = 'VENTA' if record.bullet == 'ROJO' else 'COMPRA'
+                transaction.entry_type = transaction_type
+
 
 
 
             elif last_transaction and last_transaction.status == 'close':
-                transaction.entry_type = 'VENTA' if record.bullet == 'ROJO' else 'COMPRA'
+                # transaction.entry_type = 'VENTA' if record.bullet == 'ROJO' else 'COMPRA'
+                transaction.entry_type = transaction_type
+
                 # print(transaction_id, last_transaction, last_transaction.transaction_id,
                 #       last_transaction.entry_price,entry_price)
             else:
@@ -1644,14 +1648,14 @@ def calculate_tp_sl_on_records(start_date: datetime,
     result = {}
     existing_data = [r for r in Stock.objects.get(symbol=symbol).historicaldata_set.filter(api_date__gte=start_date.date())]
     last_transaction = HistoricalTransactionDetail.get_last_transaction(symbol=symbol)
-    last_transaction_closed = last_transaction.status == 'open' if last_transaction else False
+    last_transaction_closed = last_transaction.status != 'open' if last_transaction else True
     start_index = 0
     finished = False
-
+    transaction_type = last_transaction.entry_type if last_transaction else ""
     try:
         while not finished:
-            transaction_id = last_transaction.transaction_id + 1 if last_transaction_closed\
-                else last_transaction.transaction_id if last_transaction else 1
+            transaction_id = (last_transaction.transaction_id + 1 if last_transaction_closed and last_transaction
+                else last_transaction.transaction_id if last_transaction else 1)
 
             # transaction_id = HistoricalTransactionDetail.gen_transaction_id(symbol)
 
@@ -1662,6 +1666,7 @@ def calculate_tp_sl_on_records(start_date: datetime,
                 start_at = find_concurrent_patterns(dataset=existing_data,
                                                     start_index=start_index)
 
+
                 if not start_at['status'] and 'error' in start_at:
                     raise Exception(start_at['error'])
 
@@ -1669,12 +1674,14 @@ def calculate_tp_sl_on_records(start_date: datetime,
                     finished = True
                     continue
                 start_index = start_at['start_index']
+                transaction_type = start_at['transaction_type']
 
             # print(f"START INDEX BEFORE CALCULATION: {start_index}, LEN :{len(existing_data[start_index:])}")
             tp_sl_result = _calculate_tp_sl(dataset=existing_data,
                                             transaction_id=transaction_id,
                                             start_index=start_index,
-                                            stored=stored
+                                            stored=stored,
+                                            transaction_type=transaction_type
                                             )
 
             if not tp_sl_result['status']:
@@ -1698,7 +1705,6 @@ def calculate_tp_sl_on_records(start_date: datetime,
         result['err_obj'] = X
         result['error'] = f"{X}"
 
-    # ()
     return result
 
 
