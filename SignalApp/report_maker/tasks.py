@@ -45,7 +45,7 @@ def generate_transactions_for_existing_data():
     :return: None
     """
     stock_list = [symbol.symbol for symbol in Stock.objects.filter(priority=Stock.choices[0]).order_by('symbol')]
-    times = generate_time_intervals_for_api_query()
+    times = generate_time_intervals_for_api_query(general=True)
 
     if not times['status']:
         logger.error(f"{times['error']}")

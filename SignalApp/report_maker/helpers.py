@@ -1122,7 +1122,7 @@ def get_current_ny_time(date_time: datetime=datetime.now()):
     return (final_time.astimezone(eastern_time)- timedelta(hours=reducible)).strftime("%Y-%m-%d %H:%M")
 
 
-def generate_time_intervals_for_api_query(symbol:str):
+def generate_time_intervals_for_api_query(symbol:str, general:bool=False):
     """
     generates the start_date and end_date
     for the API requests executed with celery
@@ -1156,56 +1156,60 @@ def generate_time_intervals_for_api_query(symbol:str):
     try:
         today = get_current_ny_time(date_time=datetime.today())
         _start_date = datetime(year=datetime.now().year-1,month=1,day=4,hour=9,minute=30)  # default date
-        start_date = get_current_ny_time(_start_date)
-        end_date = today
-        stock = Stock.objects.get(symbol=symbol)
-        populated = Stock.has_historical_data(symbol=symbol)
-        status, result = settings.REDIS_OBJ.get_last_fetched_time()
-        if not status and 'error' in result.keys():
-            raise Exception(result['error'])
 
-        elif not status:
-            if not populated:
-                final_result['start_date'] = datetime.fromisoformat(start_date)
+        if not general:
+            start_date = get_current_ny_time(_start_date)
+            end_date = today
+            stock = Stock.objects.get(symbol=symbol)
+            populated = Stock.has_historical_data(symbol=symbol)
+            status, result = settings.REDIS_OBJ.get_last_fetched_time()
+            if not status and 'error' in result.keys():
+                raise Exception(result['error'])
+
+            elif not status:
+                if not populated:
+                    final_result['start_date'] = datetime.fromisoformat(start_date)
+
+                else:
+                    final_result['start_date'] = (stock.historicaldata_set.last().api_date if
+                                                  not result['last_refresh_time_celery']
+                                                  else result['last_refresh_time_celery'])
+                final_result['end_date'] = datetime.fromisoformat(end_date)
 
             else:
-                final_result['start_date'] = (stock.historicaldata_set.last().api_date if
-                                              not result['last_refresh_time_celery']
-                                              else result['last_refresh_time_celery'])
-            final_result['end_date'] = datetime.fromisoformat(end_date)
+                x = datetime.fromisoformat(result['last_refresh_time_celery'])
+                default_date = datetime.fromisoformat(get_current_ny_time(_start_date))
+                last_input_date = stock.historicaldata_set.last().api_date if populated else None
+                final_result['start_date'] = (default_date if not populated else last_input_date
+                                                            if last_input_date and last_input_date <= x else x)
 
-        else:
-            x = datetime.fromisoformat(result['last_refresh_time_celery'])
-            default_date = datetime.fromisoformat(get_current_ny_time(_start_date))
-            last_input_date = stock.historicaldata_set.last().api_date if populated else None
-            final_result['start_date'] = (default_date if not populated else last_input_date
-                                                        if last_input_date and last_input_date <= x else x)
+                final_result['end_date'] = datetime.fromisoformat(end_date)
+                if final_result['start_date'] > final_result['end_date']:
+                    s = final_result.pop('start_date')
+                    f = final_result.pop('end_date')
+                    final_result['start_date'] = f
+                    final_result['end_date'] = s
 
-            final_result['end_date'] = datetime.fromisoformat(end_date)
-            if final_result['start_date'] > final_result['end_date']:
-                s = final_result.pop('start_date')
-                f = final_result.pop('end_date')
-                final_result['start_date'] = f
-                final_result['end_date'] = s
-
-                # if final_result['start_date'].minute > 30:
-                #     print(today)
-                #
-                # # update to control issue with the dates and stuffs
-                if final_result['start_date'].date() == datetime.today().date() \
-                        and (final_result['start_date'].hour > 18 or final_result['start_date'].hour < 9):
-                    # print(today)
+                    # if final_result['start_date'].minute > 30:
+                    #     print(today)
                     #
-                    final_result['prior_start_date'] = final_result['start_date']
-                    final_result['start_date'] -= timedelta(days=1)
+                    # # update to control issue with the dates and stuffs
+                    if final_result['start_date'].date() == datetime.today().date() \
+                            and (final_result['start_date'].hour > 18 or final_result['start_date'].hour < 9):
+                        # print(today)
+                        #
+                        final_result['prior_start_date'] = final_result['start_date']
+                        final_result['start_date'] -= timedelta(days=1)
 
-        status, error = settings.REDIS_OBJ.refresh_last_fetched_time(new_refresh_time=datetime.fromisoformat(
-            end_date).isoformat())
+            status, error = settings.REDIS_OBJ.refresh_last_fetched_time(new_refresh_time=datetime.fromisoformat(
+                end_date).isoformat())
 
-        if not status:
-            raise Exception(error)
+            if not status:
+                raise Exception(error)
+        else:
+            final_result['start_date'] = _start_date
 
-        final_result['status'] = status
+        final_result['status'] = True
 
     except Exception as E:
         final_result['error'] = f"There was an Error: {E}"
