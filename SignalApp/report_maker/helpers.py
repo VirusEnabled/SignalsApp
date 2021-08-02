@@ -1122,7 +1122,7 @@ def get_current_ny_time(date_time: datetime=datetime.now()):
     return (final_time.astimezone(eastern_time)- timedelta(hours=reducible)).strftime("%Y-%m-%d %H:%M")
 
 
-def generate_time_intervals_for_api_query(symbol:str):
+def generate_time_intervals_for_api_query(symbol:str, general:bool=False):
     """
     generates the start_date and end_date
     for the API requests executed with celery
@@ -1156,56 +1156,60 @@ def generate_time_intervals_for_api_query(symbol:str):
     try:
         today = get_current_ny_time(date_time=datetime.today())
         _start_date = datetime(year=datetime.now().year-1,month=1,day=4,hour=9,minute=30)  # default date
-        start_date = get_current_ny_time(_start_date)
-        end_date = today
-        stock = Stock.objects.get(symbol=symbol)
-        populated = Stock.has_historical_data(symbol=symbol)
-        status, result = settings.REDIS_OBJ.get_last_fetched_time()
-        if not status and 'error' in result.keys():
-            raise Exception(result['error'])
 
-        elif not status:
-            if not populated:
-                final_result['start_date'] = datetime.fromisoformat(start_date)
+        if not general:
+            start_date = get_current_ny_time(_start_date)
+            end_date = today
+            stock = Stock.objects.get(symbol=symbol)
+            populated = Stock.has_historical_data(symbol=symbol)
+            status, result = settings.REDIS_OBJ.get_last_fetched_time()
+            if not status and 'error' in result.keys():
+                raise Exception(result['error'])
+
+            elif not status:
+                if not populated:
+                    final_result['start_date'] = datetime.fromisoformat(start_date)
+
+                else:
+                    final_result['start_date'] = (stock.historicaldata_set.last().api_date if
+                                                  not result['last_refresh_time_celery']
+                                                  else result['last_refresh_time_celery'])
+                final_result['end_date'] = datetime.fromisoformat(end_date)
 
             else:
-                final_result['start_date'] = (stock.historicaldata_set.last().api_date if
-                                              not result['last_refresh_time_celery']
-                                              else result['last_refresh_time_celery'])
-            final_result['end_date'] = datetime.fromisoformat(end_date)
+                x = datetime.fromisoformat(result['last_refresh_time_celery'])
+                default_date = datetime.fromisoformat(get_current_ny_time(_start_date))
+                last_input_date = stock.historicaldata_set.last().api_date if populated else None
+                final_result['start_date'] = (default_date if not populated else last_input_date
+                                                            if last_input_date and last_input_date <= x else x)
 
-        else:
-            x = datetime.fromisoformat(result['last_refresh_time_celery'])
-            default_date = datetime.fromisoformat(get_current_ny_time(_start_date))
-            last_input_date = stock.historicaldata_set.last().api_date if populated else None
-            final_result['start_date'] = (default_date if not populated else last_input_date
-                                                        if last_input_date and last_input_date <= x else x)
+                final_result['end_date'] = datetime.fromisoformat(end_date)
+                if final_result['start_date'] > final_result['end_date']:
+                    s = final_result.pop('start_date')
+                    f = final_result.pop('end_date')
+                    final_result['start_date'] = f
+                    final_result['end_date'] = s
 
-            final_result['end_date'] = datetime.fromisoformat(end_date)
-            if final_result['start_date'] > final_result['end_date']:
-                s = final_result.pop('start_date')
-                f = final_result.pop('end_date')
-                final_result['start_date'] = f
-                final_result['end_date'] = s
-
-                # if final_result['start_date'].minute > 30:
-                #     print(today)
-                #
-                # # update to control issue with the dates and stuffs
-                if final_result['start_date'].date() == datetime.today().date() \
-                        and (final_result['start_date'].hour > 18 or final_result['start_date'].hour < 9):
-                    # print(today)
+                    # if final_result['start_date'].minute > 30:
+                    #     print(today)
                     #
-                    final_result['prior_start_date'] = final_result['start_date']
-                    final_result['start_date'] -= timedelta(days=1)
+                    # # update to control issue with the dates and stuffs
+                    if final_result['start_date'].date() == datetime.today().date() \
+                            and (final_result['start_date'].hour > 18 or final_result['start_date'].hour < 9):
+                        # print(today)
+                        #
+                        final_result['prior_start_date'] = final_result['start_date']
+                        final_result['start_date'] -= timedelta(days=1)
 
-        status, error = settings.REDIS_OBJ.refresh_last_fetched_time(new_refresh_time=datetime.fromisoformat(
-            end_date).isoformat())
+            status, error = settings.REDIS_OBJ.refresh_last_fetched_time(new_refresh_time=datetime.fromisoformat(
+                end_date).isoformat())
 
-        if not status:
-            raise Exception(error)
+            if not status:
+                raise Exception(error)
+        else:
+            final_result['start_date'] = _start_date
 
-        final_result['status'] = status
+        final_result['status'] = True
 
     except Exception as E:
         final_result['error'] = f"There was an Error: {E}"
@@ -1495,12 +1499,12 @@ def find_concurrent_patterns(dataset: list, start_index: int=0,)-> dict:
     try:
         for i in index_list:
             # print(dataset[i].bullet,dataset[i + 1].bullet,dataset[i + 2].bullet )
-            if dataset[i].bullet == 'BLANCO' and (
-                            dataset[i + 1].bullet == dataset[i + 2].bullet and dataset[i+2].bullet != 'BLANCO' ):
+            if dataset[i].bullet == 'BLANCO' and dataset[i+1].bullet != 'BLANCO' :
                 # execute code to gather and calculate the values
                 # print(dataset[i].bullet, dataset[i + 1].bullet, dataset[i + 2].bullet,"FOUNDDDDD")
                 # print(dataset[i], dataset[i + 1], dataset[i + 2])
                 result['start_index'] = i + 2
+                result['transaction_type'] = 'COMPRA' if dataset[i+1].bullet == 'AZUL' else 'VENTA'
                 break
             # print(dataset[i].bullet,dataset[i + 1].bullet,dataset[i + 2].bullet, 'NOT FOUNDDD')
 
@@ -1520,7 +1524,7 @@ def find_concurrent_patterns(dataset: list, start_index: int=0,)-> dict:
 
     return result
 
-def _calculate_tp_sl(dataset:list, stored:bool,
+def _calculate_tp_sl(dataset:list, stored:bool,transaction_type:str,
                      start_index: int=0, transaction_id:int=1) -> dict:
     """
     calculates the take profit and stop loss
@@ -1564,12 +1568,16 @@ def _calculate_tp_sl(dataset:list, stored:bool,
             """
 
             if not last_transaction:
-                transaction.entry_type = 'VENTA' if record.bullet == 'ROJO' else 'COMPRA'
+                # transaction.entry_type = 'VENTA' if record.bullet == 'ROJO' else 'COMPRA'
+                transaction.entry_type = transaction_type
+
 
 
 
             elif last_transaction and last_transaction.status == 'close':
-                transaction.entry_type = 'VENTA' if record.bullet == 'ROJO' else 'COMPRA'
+                # transaction.entry_type = 'VENTA' if record.bullet == 'ROJO' else 'COMPRA'
+                transaction.entry_type = transaction_type
+
                 # print(transaction_id, last_transaction, last_transaction.transaction_id,
                 #       last_transaction.entry_price,entry_price)
             else:
@@ -1644,14 +1652,14 @@ def calculate_tp_sl_on_records(start_date: datetime,
     result = {}
     existing_data = [r for r in Stock.objects.get(symbol=symbol).historicaldata_set.filter(api_date__gte=start_date.date())]
     last_transaction = HistoricalTransactionDetail.get_last_transaction(symbol=symbol)
-    last_transaction_closed = last_transaction.status == 'open' if last_transaction else False
+    last_transaction_closed = last_transaction.status != 'open' if last_transaction else True
     start_index = 0
     finished = False
-
+    transaction_type = last_transaction.entry_type if last_transaction else ""
     try:
         while not finished:
-            transaction_id = last_transaction.transaction_id + 1 if last_transaction_closed\
-                else last_transaction.transaction_id if last_transaction else 1
+            transaction_id = (last_transaction.transaction_id + 1 if last_transaction_closed and last_transaction
+                else last_transaction.transaction_id if last_transaction else 1)
 
             # transaction_id = HistoricalTransactionDetail.gen_transaction_id(symbol)
 
@@ -1662,6 +1670,7 @@ def calculate_tp_sl_on_records(start_date: datetime,
                 start_at = find_concurrent_patterns(dataset=existing_data,
                                                     start_index=start_index)
 
+
                 if not start_at['status'] and 'error' in start_at:
                     raise Exception(start_at['error'])
 
@@ -1669,12 +1678,14 @@ def calculate_tp_sl_on_records(start_date: datetime,
                     finished = True
                     continue
                 start_index = start_at['start_index']
+                transaction_type = start_at['transaction_type']
 
             # print(f"START INDEX BEFORE CALCULATION: {start_index}, LEN :{len(existing_data[start_index:])}")
             tp_sl_result = _calculate_tp_sl(dataset=existing_data,
                                             transaction_id=transaction_id,
                                             start_index=start_index,
-                                            stored=stored
+                                            stored=stored,
+                                            transaction_type=transaction_type
                                             )
 
             if not tp_sl_result['status']:
@@ -1698,7 +1709,6 @@ def calculate_tp_sl_on_records(start_date: datetime,
         result['err_obj'] = X
         result['error'] = f"{X}"
 
-    # ()
     return result
 
 
